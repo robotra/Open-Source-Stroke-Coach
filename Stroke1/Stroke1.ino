@@ -1,4 +1,3 @@
-
 #include "I2Cdev.h"
 #include "MPU6050_6Axis_MotionApps20.h"
 #include <Adafruit_GPS.h>
@@ -36,7 +35,7 @@ VectorFloat gravity;    // [x, y, z]            gravity vector
 float euler[3];         // [psi, theta, phi]    Euler angle container
 float ypr[3];           // [yaw, pitch, roll]   yaw/pitch/roll container and gravity vector
 
-
+String dataName = "";
 
 //SD Setup
 
@@ -58,14 +57,7 @@ void dmpDataReady() {
 // ================================================================
 
 void setup() {
-  // join I2C bus (I2Cdev library doesn't do this automatically)
-#if I2CDEV_IMPLEMENTATION == I2CDEV_ARDUINO_WIRE
   Wire.begin();
-
-  Wire.setClock(400000); // 400kHz I2C clock. Comment this line if having compilation difficulties
-#elif I2CDEV_IMPLEMENTATION == I2CDEV_BUILTIN_FASTWIRE
-  Fastwire::setup(400, true);
-#endif
 
   // initialize serial communication
   // (115200 chosen because it is required for Teapot Demo output, but it's
@@ -77,14 +69,6 @@ void setup() {
   GPS.sendCommand(PMTK_SET_NMEA_UPDATE_1HZ);
 
   delay(1000);
-
-  while (!Serial); // wait for Leonardo enumeration, others continue immediately
-
-  // NOTE: 8MHz or slower host processors, like the Teensy @ 3.3V or Arduino
-  // Pro Mini running at 3.3V, cannot handle this baud rate reliably due to
-  // the baud timing being too misaligned with processor ticks. You must use
-  // 38400 or slower in these cases, or use some kind of external separate
-  // crystal solution for the UART timer.
 
   // initialize device
   Serial.println(F("Initializing I2C devices..."));
@@ -101,12 +85,6 @@ void setup() {
   Serial.println(F("Initializing DMP..."));
   devStatus = mpu.dmpInitialize();
 
-  // supply your own gyro offsets here, scaled for min sensitivity
-  //mpu.setXGyroOffset(220);
-  //mpu.setYGyroOffset(76);
-  //mpu.setZGyroOffset(-85);
-  //mpu.setZAccelOffset(1788); // 1688 factory default for my test chip
-
   // make sure it worked (returns 0 if so)
   if (devStatus == 0) {
     mpu.PrintActiveOffsets();
@@ -122,7 +100,6 @@ void setup() {
     dmpReady = true;
 
     mpu.setRate(9);
-    //mpu.setFullScaleAccelRange(2);
 
     // get expected DMP packet size for later comparison
     packetSize = mpu.dmpGetFIFOPacketSize();
@@ -150,6 +127,18 @@ void setup() {
 
   // configure LED for output
   pinMode(LED_PIN, OUTPUT);
+  char c = GPS.read();
+  
+  dataName.concat(GPS.year);
+  dataName.concat("-");
+  dataName.concat(GPS.day);
+  dataName.concat("-");
+  dataName.concat(GPS.hour);
+  dataName.concat("-");
+  dataName.concat(GPS.minute);  
+  dataName.concat("-");
+  dataName.concat(GPS.seconds);
+  dataName.concat("-datalog.csv");
 }
 
 
@@ -168,16 +157,7 @@ void loop() {
       // try to get out of the infinite loop
       fifoCount = mpu.getFIFOCount();
     }
-    // other program behavior stuff here
-    // .
-    // .
-    // .
-    // if you are really paranoid you can frequently test in between other
-    // stuff to see if mpuInterrupt is true, and if so, "break;" from the
-    // while() loop to immediately process the MPU data
-    // .
-    // .
-    // .
+
   }
 
   // reset interrupt flag and get INT_STATUS byte
@@ -214,7 +194,9 @@ void loop() {
     mpu.dmpGetGravity(&gravity, &q);
     mpu.dmpGetLinearAccel(&aaReal, &aa, &gravity);
     mpu.dmpGetLinearAccelInWorld(&aaWorld, &aaReal, &q);
+
     mpu.setIntEnabled(false);
+
     Serial.print(aaReal.x);
     Serial.print(",");
     Serial.print(aaReal.y);
@@ -222,18 +204,9 @@ void loop() {
     Serial.print(aaReal.z);
     Serial.print(",");
     Serial.println(GPSprint());
+    write2File();
 
-    File dataFile = SD.open("datalog.txt", FILE_WRITE);
-    dataFile.print(aaReal.x);
-    dataFile.print(",");
-    dataFile.print(aaReal.y);
-    dataFile.print(",");
-    dataFile.print(aaReal.z);
-    dataFile.print(",");
-    dataFile.println(GPSprint());
-    dataFile.close();
-
-
+    mpu.resetFIFO();
     mpu.setIntEnabled(true);
 
     // blink LED to indicate activity
@@ -261,4 +234,20 @@ String GPSprint() // run over and over again
       return ""; // we can fail to parse a sentence in which case we should just wait for another
   }
   return GPS.lastNMEA();
+}
+
+void write2File()
+{
+  File dataFile = SD.open(dataName, FILE_WRITE);
+
+  dataFile.print(aaReal.x);
+  dataFile.print(",");
+  dataFile.print(aaReal.y);
+  dataFile.print(",");
+  dataFile.print(aaReal.z);
+  dataFile.print(",");
+  dataFile.println(GPSprint());
+  
+  dataFile.close();
+
 }
