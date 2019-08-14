@@ -1,33 +1,20 @@
-// Based on I2C device class (I2Cdev) demonstration Arduino sketch for MPU6050 class using DMP (MotionApps v2.0)
-// 6/21/2012 by Jeff Rowberg <jeff@rowberg.net>
-// I2Cdev and MPU6050 must be installed as libraries, or else the .cpp/.h files
-// for both classes must be in the include path of your project
+
 #include "I2Cdev.h"
 #include "MPU6050_6Axis_MotionApps20.h"
-#include "Wire.h"
-#include "SD.h"
-#include <SPI.h>
 #include <Adafruit_GPS.h>
+#include <SD.h>
+#include <SPI.h>
+#include "Wire.h"
 
 
-
-// class default I2C address is 0x68
-// specific I2C addresses may be passed as a parameter here
 MPU6050 mpu;
-//MPU6050 mpu(0x68); // <-- use for AD0 high
 
-/* =========================================================================
-   NOTE: In addition to connection 3.3v, GND, SDA, and SCL, this sketch
-   depends on the MPU-6050's INT pin being connected to the Arduino's
-   external interrupt #0 pin. On the Arduino Uno and Mega 2560, this is
-   digital I/O pin 2. We are using pin 19 (a5).
-   ========================================================================= */
-
-
+//gps setup
 #define GPSSerial Serial1
 Adafruit_GPS GPS(&GPSSerial);
-#define GPSECHO  false
+#define GPSECHO false
 
+//mpu interrupt setup
 #define INTERRUPT_PIN 19  // use pin 2 on Arduino Uno & most boards
 #define LED_PIN 13 // (Arduino is 13, Teensy is 11, Teensy++ is 6)
 bool blinkState = false;
@@ -49,11 +36,11 @@ VectorFloat gravity;    // [x, y, z]            gravity vector
 float euler[3];         // [psi, theta, phi]    Euler angle container
 float ypr[3];           // [yaw, pitch, roll]   yaw/pitch/roll container and gravity vector
 
-// SD setup
+
+
+//SD Setup
+
 const int chipSelect = 4;
-File dataLog;
-String nameStr = "LogFile0.csv";
-String tempStr;
 
 // ================================================================
 // ===               INTERRUPT DETECTION ROUTINE                ===
@@ -71,61 +58,71 @@ void dmpDataReady() {
 // ================================================================
 
 void setup() {
+  // join I2C bus (I2Cdev library doesn't do this automatically)
+#if I2CDEV_IMPLEMENTATION == I2CDEV_ARDUINO_WIRE
   Wire.begin();
-  SD.begin(4);
+
+  Wire.setClock(400000); // 400kHz I2C clock. Comment this line if having compilation difficulties
+#elif I2CDEV_IMPLEMENTATION == I2CDEV_BUILTIN_FASTWIRE
+  Fastwire::setup(400, true);
+#endif
+
   // initialize serial communication
+  // (115200 chosen because it is required for Teapot Demo output, but it's
+  // really up to you depending on your project)
   Serial.begin(115200);
   GPS.begin(9600);
 
-  //RMC (recommended minimum)
-  GPS.sendCommand(PMTK_SET_NMEA_OUTPUT_RMCGGA);
-  GPS.sendCommand(PMTK_SET_NMEA_UPDATE_10HZ); // 1 Hz update rate
+  GPS.sendCommand(PMTK_SET_NMEA_OUTPUT_RMCONLY);
+  GPS.sendCommand(PMTK_SET_NMEA_UPDATE_1HZ);
 
-  Serial.print("Initializing SD card...");
+  delay(1000);
 
-  // see if the card is present and can be initialized:
-  if (!SD.begin(chipSelect)) {
-    Serial.println("Card failed, or not present");
-    // don't do anything more:
-    while (1);
-  }
-  Serial.println("card initialized.");
+  while (!Serial); // wait for Leonardo enumeration, others continue immediately
 
-  //function to make sure that data file names arent overwritten
-  int i = 0;
-  while (SD.exists(nameStr))
-  {
-    i++;
-    tempStr = "LogFile" + i;
-    nameStr = tempStr + ".csv";
-  }
-
+  // NOTE: 8MHz or slower host processors, like the Teensy @ 3.3V or Arduino
+  // Pro Mini running at 3.3V, cannot handle this baud rate reliably due to
+  // the baud timing being too misaligned with processor ticks. You must use
+  // 38400 or slower in these cases, or use some kind of external separate
+  // crystal solution for the UART timer.
 
   // initialize device
   Serial.println(F("Initializing I2C devices..."));
   mpu.initialize();
   pinMode(INTERRUPT_PIN, INPUT);
+
+
+
   // verify connection
   Serial.println(F("Testing device connections..."));
   Serial.println(mpu.testConnection() ? F("MPU6050 connection successful") : F("MPU6050 connection failed"));
+
   // load and configure the DMP
   Serial.println(F("Initializing DMP..."));
   devStatus = mpu.dmpInitialize();
+
+  // supply your own gyro offsets here, scaled for min sensitivity
+  //mpu.setXGyroOffset(220);
+  //mpu.setYGyroOffset(76);
+  //mpu.setZGyroOffset(-85);
+  //mpu.setZAccelOffset(1788); // 1688 factory default for my test chip
+
   // make sure it worked (returns 0 if so)
   if (devStatus == 0) {
+    mpu.PrintActiveOffsets();
     // turn on the DMP, now that it's ready
     Serial.println(F("Enabling DMP..."));
     mpu.setDMPEnabled(true);
-    // enable Arduino interrupt detection
-    Serial.print(F("Enabling interrupt detection (Arduino external interrupt "));
-    Serial.print(digitalPinToInterrupt(INTERRUPT_PIN));
-    Serial.println(F(")..."));
+
     attachInterrupt(digitalPinToInterrupt(INTERRUPT_PIN), dmpDataReady, RISING);
     mpuIntStatus = mpu.getIntStatus();
 
     // set our DMP Ready flag so the main loop() function knows it's okay to use it
     Serial.println(F("DMP ready! Waiting for first interrupt..."));
     dmpReady = true;
+
+    mpu.setRate(9);
+    //mpu.setFullScaleAccelRange(2);
 
     // get expected DMP packet size for later comparison
     packetSize = mpu.dmpGetFIFOPacketSize();
@@ -138,13 +135,21 @@ void setup() {
     Serial.print(devStatus);
     Serial.println(F(")"));
   }
-  // 1khz / (1 + 9) = 100 Hz
-  uint8_t rate = 99;
-  mpu.setRate(rate);
+
+  if (!SD.begin(chipSelect)) {
+    Serial.println("Card failed, or not present");
+    // don't do anything more:
+    while (1);
+  }
+  mpu.setXAccelOffset(-2376);
+  mpu.setYAccelOffset(-531);
+  mpu.setZAccelOffset(1245);
+  mpu.setXGyroOffset(119);
+  mpu.setYGyroOffset(53);
+  mpu.setZGyroOffset(-10);
 
   // configure LED for output
   pinMode(LED_PIN, OUTPUT);
-  dataLog.println("accel x,y,z");
 }
 
 
@@ -164,7 +169,15 @@ void loop() {
       fifoCount = mpu.getFIFOCount();
     }
     // other program behavior stuff here
-
+    // .
+    // .
+    // .
+    // if you are really paranoid you can frequently test in between other
+    // stuff to see if mpuInterrupt is true, and if so, "break;" from the
+    // while() loop to immediately process the MPU data
+    // .
+    // .
+    // .
   }
 
   // reset interrupt flag and get INT_STATUS byte
@@ -173,64 +186,79 @@ void loop() {
 
   // get current FIFO count
   fifoCount = mpu.getFIFOCount();
-
+  if (fifoCount < packetSize) {
+    //Lets go back and wait for another interrupt. We shouldn't be here, we got an interrupt from another event
+    // This is blocking so don't do it   while (fifoCount < packetSize) fifoCount = mpu.getFIFOCount();
+  }
   // check for overflow (this should never happen unless our code is too inefficient)
-  // 0x01 << is a replacement for _BV because of AVR specific programming restrictions (this is being compiled for an adafruit feather M0)
-  if ((mpuIntStatus & 0x01 << (MPU6050_INTERRUPT_FIFO_OFLOW_BIT)) || fifoCount >= 1024) {
+  else if ((mpuIntStatus & 0x01 << (MPU6050_INTERRUPT_FIFO_OFLOW_BIT)) || fifoCount >= 1024) {
     // reset so we can continue cleanly
     mpu.resetFIFO();
-    fifoCount = mpu.getFIFOCount();
+    //  fifoCount = mpu.getFIFOCount();  // will be zero after reset no need to ask
     Serial.println(F("FIFO overflow!"));
 
     // otherwise, check for DMP data ready interrupt (this should happen frequently)
   } else if (mpuIntStatus & 0x01 << (MPU6050_INTERRUPT_DMP_INT_BIT)) {
-    // wait for correct available data length, should be a VERY short wait
-    while (fifoCount < packetSize) fifoCount = mpu.getFIFOCount();
 
     // read a packet from FIFO
-    mpu.getFIFOBytes(fifoBuffer, packetSize);
-
-    // track FIFO count here in case there is > 1 packet available
-    // (this lets us immediately read more without waiting for an interrupt)
-    fifoCount -= packetSize;
-
-    // display real acceleration, adjusted to remove gravity
+    while (fifoCount >= packetSize) { // Lets catch up to NOW, someone is using the dreaded delay()!
+      mpu.getFIFOBytes(fifoBuffer, packetSize);
+      // track FIFO count here in case there is > 1 packet available
+      // (this lets us immediately read more without waiting for an interrupt)
+      fifoCount -= packetSize;
+    }
+    // display initial world-frame acceleration, adjusted to remove gravity
+    // and rotated based on known orientation from quaternion
     mpu.dmpGetQuaternion(&q, fifoBuffer);
     mpu.dmpGetAccel(&aa, fifoBuffer);
     mpu.dmpGetGravity(&gravity, &q);
     mpu.dmpGetLinearAccel(&aaReal, &aa, &gravity);
     mpu.dmpGetLinearAccelInWorld(&aaWorld, &aaReal, &q);
-
-    //collect GPS data
-    char c = GPS.read();
-    //dataLog = SD.open(nameStr, FILE_WRITE);
-
+    mpu.setIntEnabled(false);
     Serial.print(aaReal.x);
     Serial.print(",");
     Serial.print(aaReal.y);
     Serial.print(",");
     Serial.print(aaReal.z);
     Serial.print(",");
-    Serial.print(aaWorld.x);
-    Serial.print(",");
-    Serial.print(aaWorld.y);
-    Serial.print(",");
-    Serial.println(aaWorld.z);
-    if (GPS.newNMEAreceived()){ 
-    if (!GPS.parse(GPS.lastNMEA()))   // this also sets the newNMEAreceived() flag to false
-    {
-        Serial.println("");
-        return;  // return to top of loop() if sentence does not verify correctly or completely
-    }    
-    Serial.print("\nTime: ");
-    Serial.print(GPS.hour, DEC); Serial.print(':');
-    Serial.print(GPS.minute, DEC); Serial.print(':');
-    Serial.print(GPS.seconds, DEC); Serial.println('.');
-    }
-    //dataLog.close();
+    Serial.println(GPSprint());
+
+    File dataFile = SD.open("datalog.txt", FILE_WRITE);
+    dataFile.print(aaReal.x);
+    dataFile.print(",");
+    dataFile.print(aaReal.y);
+    dataFile.print(",");
+    dataFile.print(aaReal.z);
+    dataFile.print(",");
+    dataFile.println(GPSprint());
+    dataFile.close();
+
+
+    mpu.setIntEnabled(true);
 
     // blink LED to indicate activity
     blinkState = !blinkState;
     digitalWrite(LED_PIN, blinkState);
   }
+}
+
+
+String GPSprint() // run over and over again
+{
+  // read data from the GPS in the 'main loop'
+  char c = GPS.read();
+  // if you want to debug, this is a good time to do it!
+  if (GPSECHO)
+    if (c) Serial.print(c);
+  // if a sentence is received, we can check the checksum, parse it...
+
+  if (GPS.newNMEAreceived()) {
+    // a tricky thing here is if we print the NMEA sentence, or data
+    // we end up not listening and catching other sentences!
+    // so be very wary if using OUTPUT_ALLDATA and trytng to print out data
+    //Serial.println(GPS.lastNMEA()); // this also sets the newNMEAreceived() flag to false
+    if (!GPS.parse(GPS.lastNMEA())) // this also sets the newNMEAreceived() flag to false
+      return ""; // we can fail to parse a sentence in which case we should just wait for another
+  }
+  return GPS.lastNMEA();
 }
