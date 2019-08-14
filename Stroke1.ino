@@ -10,6 +10,7 @@
 #include <Adafruit_GPS.h>
 
 
+
 // class default I2C address is 0x68
 // specific I2C addresses may be passed as a parameter here
 MPU6050 mpu;
@@ -202,31 +203,31 @@ void loop() {
 
     //collect GPS data
     char c = GPS.read();
-    dataLog = SD.open(nameStr, FILE_WRITE);
+    //dataLog = SD.open(nameStr, FILE_WRITE);
 
-    dataLog.print(aaReal.x);
-    dataLog.print(",");
-    dataLog.print(aaReal.y);
-    dataLog.print(",");
-    dataLog.print(aaReal.z);
-    dataLog.print(",");
-    dataLog.print(aaWorld.x);
-    dataLog.print(",");
-    dataLog.print(aaWorld.y);
-    dataLog.print(",");
-    dataLog.println(aaWorld.z);
+    Serial.print(aaReal.x);
+    Serial.print(",");
+    Serial.print(aaReal.y);
+    Serial.print(",");
+    Serial.print(aaReal.z);
+    Serial.print(",");
+    Serial.print(aaWorld.x);
+    Serial.print(",");
+    Serial.print(aaWorld.y);
+    Serial.print(",");
+    Serial.println(aaWorld.z);
     if (GPS.newNMEAreceived()){ 
     if (!GPS.parse(GPS.lastNMEA()))   // this also sets the newNMEAreceived() flag to false
     {
-        dataLog.println("");
+        Serial.println("");
         return;  // return to top of loop() if sentence does not verify correctly or completely
     }    
-    dataLog.print("\nTime: ");
-    dataLog.print(GPS.hour, DEC); Serial.print(':');
-    dataLog.print(GPS.minute, DEC); Serial.print(':');
-    dataLog.print(GPS.seconds, DEC); Serial.println('.');
+    Serial.print("\nTime: ");
+    Serial.print(GPS.hour, DEC); Serial.print(':');
+    Serial.print(GPS.minute, DEC); Serial.print(':');
+    Serial.print(GPS.seconds, DEC); Serial.println('.');
     }
-    dataLog.close();
+    //dataLog.close();
 
     // blink LED to indicate activity
     blinkState = !blinkState;
