@@ -35,7 +35,7 @@ VectorFloat gravity;    // [x, y, z]            gravity vector
 float euler[3];         // [psi, theta, phi]    Euler angle container
 float ypr[3];           // [yaw, pitch, roll]   yaw/pitch/roll container and gravity vector
 
-String dataName = "";
+String dataName = "dataLog.csv";
 
 //SD Setup
 
@@ -118,27 +118,15 @@ void setup() {
     // don't do anything more:
     while (1);
   }
-  mpu.setXAccelOffset(-2376);
-  mpu.setYAccelOffset(-531);
-  mpu.setZAccelOffset(1245);
+  mpu.setXAccelOffset(-4196);
+  mpu.setYAccelOffset(-451);
+  mpu.setZAccelOffset(3511);
   mpu.setXGyroOffset(119);
   mpu.setYGyroOffset(53);
   mpu.setZGyroOffset(-10);
 
   // configure LED for output
   pinMode(LED_PIN, OUTPUT);
-  char c = GPS.read();
-  
-  dataName.concat(GPS.year);
-  dataName.concat("-");
-  dataName.concat(GPS.day);
-  dataName.concat("-");
-  dataName.concat(GPS.hour);
-  dataName.concat("-");
-  dataName.concat(GPS.minute);  
-  dataName.concat("-");
-  dataName.concat(GPS.seconds);
-  dataName.concat("-datalog.csv");
 }
 
 
@@ -157,7 +145,6 @@ void loop() {
       // try to get out of the infinite loop
       fifoCount = mpu.getFIFOCount();
     }
-
   }
 
   // reset interrupt flag and get INT_STATUS byte
@@ -179,7 +166,6 @@ void loop() {
 
     // otherwise, check for DMP data ready interrupt (this should happen frequently)
   } else if (mpuIntStatus & 0x01 << (MPU6050_INTERRUPT_DMP_INT_BIT)) {
-
     // read a packet from FIFO
     while (fifoCount >= packetSize) { // Lets catch up to NOW, someone is using the dreaded delay()!
       mpu.getFIFOBytes(fifoBuffer, packetSize);
@@ -204,7 +190,7 @@ void loop() {
     Serial.print(aaReal.z);
     Serial.print(",");
     Serial.println(GPSprint());
-    write2File();
+    //write2File();
 
     mpu.resetFIFO();
     mpu.setIntEnabled(true);
