@@ -5,6 +5,10 @@
 #include <SPI.h>
 #include "Wire.h"
 
+#if defined(ARDUINO_SAMD_ZERO) && defined(SERIAL_PORT_USBVIRTUAL)
+  // Required for Serial on Zero based boards
+  #define Serial SERIAL_PORT_USBVIRTUAL
+#endif
 
 MPU6050 mpu;
 
@@ -36,8 +40,9 @@ float euler[3];         // [psi, theta, phi]    Euler angle container
 float ypr[3];           // [yaw, pitch, roll]   yaw/pitch/roll container and gravity vector
 
 String dataName = "dataLog-";
-
+String cMinute;
 //SD Setup
+int trig = 0;
 
 const int chipSelect = 4;
 
@@ -58,10 +63,6 @@ void dmpDataReady() {
 
 void setup() {
   Wire.begin();
-
-  // initialize serial communication
-  // (115200 chosen because it is required for Teapot Demo output, but it's
-  // really up to you depending on your project)
   Serial.begin(115200);
   GPS.begin(9600);
 
@@ -72,9 +73,11 @@ void setup() {
 
   // initialize device
   Serial.println(F("Initializing I2C devices..."));
+  
   mpu.initialize();
   pinMode(INTERRUPT_PIN, INPUT);
 
+  delay(1000);
 
 
   // verify connection
@@ -127,12 +130,6 @@ void setup() {
 
 
 
-  char c = GPS.read();
-
-  dataName.concat(GPS.minute);
-  dataName.concat(".csv");
-  
-  
   // configure LED for output
   pinMode(LED_PIN, OUTPUT);
 }
@@ -198,14 +195,12 @@ void loop() {
     Serial.print(aaReal.z);
     Serial.print(",");
     Serial.println(GPSprint());
-    write2File();
+    write2File(dataName, cMinute);
 
     mpu.resetFIFO();
     mpu.setIntEnabled(true);
 
     // blink LED to indicate activity
-    blinkState = !blinkState;
-    digitalWrite(LED_PIN, blinkState);
   }
 }
 
@@ -230,18 +225,28 @@ String GPSprint() // run over and over again
   return GPS.lastNMEA();
 }
 
-void write2File()
+void write2File(String dName, String cMinute)
 {
+  dataName = "": 
+  if(trig = 0)
+  {
+    dataName = GPS.day + GPS.minute;
+    dataName = dataName + "-datalog.csv";
+    trig = 1;
+  }
   File dataFile = SD.open(dataName, FILE_WRITE);
-
+  Serial.println(cMinute);
   dataFile.print(aaReal.x);
   dataFile.print(",");
   dataFile.print(aaReal.y);
   dataFile.print(",");
   dataFile.print(aaReal.z);
   dataFile.print(",");
-  dataFile.println(GPSprint());
-  
+  dataFile.print(GPSprint());
+
+  blinkState = !blinkState;
+  digitalWrite(LED_PIN, blinkState);
+
   dataFile.close();
 
 }
