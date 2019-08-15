@@ -35,7 +35,7 @@ VectorFloat gravity;    // [x, y, z]            gravity vector
 float euler[3];         // [psi, theta, phi]    Euler angle container
 float ypr[3];           // [yaw, pitch, roll]   yaw/pitch/roll container and gravity vector
 
-String dataName = "dataLog.csv";
+String dataName = "dataLog-";
 
 //SD Setup
 
@@ -125,6 +125,14 @@ void setup() {
   mpu.setYGyroOffset(53);
   mpu.setZGyroOffset(-10);
 
+
+
+  char c = GPS.read();
+
+  dataName.concat(GPS.minute);
+  dataName.concat(".csv");
+  
+  
   // configure LED for output
   pinMode(LED_PIN, OUTPUT);
 }
@@ -190,7 +198,7 @@ void loop() {
     Serial.print(aaReal.z);
     Serial.print(",");
     Serial.println(GPSprint());
-    //write2File();
+    write2File();
 
     mpu.resetFIFO();
     mpu.setIntEnabled(true);
