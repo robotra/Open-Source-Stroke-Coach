@@ -227,7 +227,11 @@ String GPSprint() // run over and over again
 
 void write2File(String dName, String cMinute)
 {
-  dataName = "": 
+  while(!GPS.fix)
+  {
+    return;
+  }
+  dataName = "";
   if(trig = 0)
   {
     dataName = GPS.day + GPS.minute;
