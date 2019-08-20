@@ -23,6 +23,7 @@ uint8_t strokeBuf[300];
 uint8_t rollingBuf[50];
 uint8_t rateBuf[3];
 uint8_t rateAvg;
+uint8_t rateTime;
 
 //MPU orientation/motion vars
 Quaternion q;           // [w, x, y, z]         quaternion container
@@ -150,53 +151,8 @@ void loop() {
 
     mpu.setIntEnabled(false);
 
-    for (int i = 0; i < sizeof(rollingBuf) - 1; i++)
-    {
-      //move all elements in array back one
-      rollingBuf[sizeof(rollingBuf) - i] = rollingBuf[sizeof(rollingBuf) - i - 1];
-    }
+    strokeCalc();
 
-    rollingBuf[0] = sqrt(aaReal.x ^ 2 + aaReal.y ^ 2 + aaReal.z ^ 2);
-
-    for (int i = 0; i < sizeof(rollingBuf); i++)
-    {
-      //sum acceleration values in rollingBuf
-      rateAvg += rollingBuf[i];
-      //create an average
-      rateAvg = rateAvg / i;
-    }
-
-    //we now have rateAvg, which is an average of the combined acceleration vectors for the past 50 samples.
-
-
-    for (int i = 0; i < sizeof(strokeBuf) - 1; i++)
-    {
-      //move all elements in array back one
-      strokeBuf[sizeof(strokeBuf) - i] = strokeBuf[sizeof(strokeBuf) - i - 1];
-    }
-
-    strokeBuf[0] = rateAvg;
-
-    if (strokeBuf[1] - strokeBuf[0] > 0)
-    {
-      for (int i = 1; i < 3 ; i++)
-      {
-        //move all elements in array back one
-        rateBuf[sizeof(rateBuf) - i] = rateBuf[sizeof(rateBuf) - i - 1];
-      }
-      rateBuf[0] = millis();
-    }
-
-    for (int i = 0; i < sizeof(rateBuf); i++)
-    {
-      //sum acceleration values in rollingBuf
-      rateTime += rateBuf[i];
-      //create an average
-      rateTime = rateBuf / i;
-    }
-
-    //prints one minute divided by the average time between detected strokes
-    Serial.println(60000 / rateTime);
 
 
 
@@ -207,4 +163,60 @@ void loop() {
 
     mpu.setIntEnabled(true);
   }
+}
+
+void strokeCalc()
+{
+
+  for (int i = 0; i < sizeof(rollingBuf) - 1; i++)
+  {
+    //move all elements in array back one
+    rollingBuf[sizeof(rollingBuf) - i] = rollingBuf[sizeof(rollingBuf) - i - 1];
+  }
+  rollingBuf[0] = sqrt(aaReal.x ^ 2 + aaReal.y ^ 2 + aaReal.z ^ 2);
+
+  for (int i = 0; i < sizeof(rollingBuf); i++)
+  {
+    //sum acceleration values in rollingBuf
+    rateAvg += rollingBuf[i];
+  }
+  //create an average
+  rateAvg = rateAvg / sizeof(rollingBuf);
+
+
+  //we now have rateAvg, which is an average of the combined acceleration vectors for the past 50 samples.
+
+
+  for (int i = 0; i < sizeof(strokeBuf) - 1; i++)
+  {
+    //move all elements in array back one
+    strokeBuf[sizeof(strokeBuf) - i] = strokeBuf[sizeof(strokeBuf) - i - 1];
+  }
+  //put rateAvg (50-sample average) in front of strokeBuf[]
+  strokeBuf[0] = rateAvg;
+
+
+  //0-1 looks for a positive value (more recent is bigger)
+  //3-2 looks for a negative value (older is bigger)
+  //these two combined look for the bottom of a valley
+  if (strokeBuf[0] - strokeBuf[1] > 0 && strokeBuf[3] - strokeBuf[2] < 0)
+  {
+    for (int i = 1; i < 3 ; i++)
+    {
+      //move all elements in array back one
+      rateBuf[sizeof(rateBuf) - i] = rateBuf[sizeof(rateBuf) - i - 1];
+    }
+    rateBuf[0] = millis();
+  }
+
+  for (int i = 0; i < sizeof(rateBuf); i++)
+  {
+    //sum acceleration values in rollingBuf
+    rateTime += rateBuf[i];
+  }
+  //create an average
+  rateTime = rateTime / sizeof(rateBuf);
+
+  //prints one minute divided by the average time between detected strokes
+  Serial.println(60000 / rateTime);
 }
