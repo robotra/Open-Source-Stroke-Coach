@@ -1,3 +1,9 @@
+//heavily borrowing from https://github.com/jrowberg/i2cdevlib/blob/master/Arduino/MPU6050/examples/MPU6050_DMP6/MPU6050_DMP6.ino
+//MPU6050 interrupt based library
+
+//J. O'Brien
+//8/20/19
+
 #include "I2Cdev.h"
 #include "MPU6050_6Axis_MotionApps20.h"
 #include <SPI.h>
@@ -152,10 +158,7 @@ void loop() {
     mpu.setIntEnabled(false);
 
     strokeCalc();
-
-
-
-
+    
     blinkState = !blinkState;
     digitalWrite(LED_PIN, blinkState);
 
@@ -167,17 +170,19 @@ void loop() {
 
 void strokeCalc()
 {
-
+  //
   for (int i = 0; i < sizeof(rollingBuf) - 1; i++)
   {
     //move all elements in array back one
     rollingBuf[sizeof(rollingBuf) - i] = rollingBuf[sizeof(rollingBuf) - i - 1];
   }
+  //put most recent acceleration value (as a vector length) at the beginning of the array 
   rollingBuf[0] = sqrt(aaReal.x ^ 2 + aaReal.y ^ 2 + aaReal.z ^ 2);
 
   for (int i = 0; i < sizeof(rollingBuf); i++)
   {
     //sum acceleration values in rollingBuf
+    //rateAvg is zero coming into this, per function in the main loop
     rateAvg += rollingBuf[i];
   }
   //create an average
