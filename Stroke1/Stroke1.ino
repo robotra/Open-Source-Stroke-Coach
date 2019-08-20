@@ -244,6 +244,8 @@ void loop() {
     dataFile.print(",");
     dataFile.print(aaReal.z);
     dataFile.print(",");
+    dataFile.print(millis());
+    dataFile.print(",");
     dataFile.print(GPS.lastNMEA());
     mpu.resetFIFO();
 
