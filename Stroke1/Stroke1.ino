@@ -1,17 +1,19 @@
+#include <NMEAGPS.h>
 #include "I2Cdev.h"
 #include "MPU6050_6Axis_MotionApps20.h"
-#include <Adafruit_GPS.h>
 #include <SD.h>
 #include <SPI.h>
 #include "Wire.h"
+#include <GPSport.h>
 
 
 MPU6050 mpu;
 
 //gps setup
 #define GPSSerial Serial1
-Adafruit_GPS GPS(&GPSSerial);
+static NMEAGPS GPS;
 #define GPSECHO false
+static gps_fix fix;
 
 //mpu interrupt setup
 #define INTERRUPT_PIN 19  // use pin 2 on Arduino Uno & most boards
@@ -61,10 +63,10 @@ void dmpDataReady() {
 void setup() {
   Wire.begin();
   Serial.begin(115200);
-  GPS.begin(9600);
+  gpsPort.begin( 57600 );
 
-  GPS.sendCommand(PMTK_SET_NMEA_OUTPUT_RMCONLY);
-  GPS.sendCommand(PMTK_SET_NMEA_UPDATE_1HZ);
+  //GPS.sendCommand(PMTK_SET_NMEA_OUTPUT_RMCONLY);
+  //GPS.sendCommand(PMTK_SET_NMEA_UPDATE_1HZ);
 
   delay(1000);
 
@@ -98,7 +100,7 @@ void setup() {
     Serial.println(F("DMP ready! Waiting for first interrupt..."));
     dmpReady = true;
 
-    mpu.setRate(9);
+    mpu.setRate(19);
 
     // get expected DMP packet size for later comparison
     packetSize = mpu.dmpGetFIFOPacketSize();
@@ -190,27 +192,19 @@ void loop() {
 
     mpu.setIntEnabled(false);
 
-    char c = GPS.read();
-    GPS.parse(GPS.lastNMEA());
-
-    delay(500);
-
     //prevent any further executution until there is a GPS fix.
-    while (!GPS.fix)
-    {
-      Serial.println("No fix yet");
-      mpu.resetFIFO();
-      mpu.setIntEnabled(true);
-      return;
-    }
 
-    delay(500);
+    while (GPS.available( gpsPort )) {
+      fix = GPS.read();
+    }
 
     if (trig == 0) {
       dName = "";
-      dName.concat((String)GPS.day);
-      dName.concat((String)GPS.hour);
-      dName.concat((String)GPS.minute);
+      dName.concat(fix.dateTime.date);
+      dName.concat("-");
+      dName.concat(fix.dateTime.hours);
+      dName.concat("-");
+      dName.concat(fix.dateTime.minutes);
       dName.concat(".csv");
       trig = 1;
     }
@@ -222,7 +216,7 @@ void loop() {
 
     Serial.print("Fix status:");
     Serial.print(" ");
-    Serial.println(GPS.fix);
+    //Serial.println(fix);
 
     Serial.print("trig status:");
     Serial.print(" ");
@@ -235,7 +229,15 @@ void loop() {
     Serial.print(",");
     Serial.print(aaReal.z);
     Serial.print(",");
-    Serial.println(GPS.lastNMEA());
+    Serial.print(fix.dateTime.hours);
+    Serial.print(",");
+    Serial.print(fix.dateTime.minutes);
+    Serial.print(",");
+    Serial.print(fix.dateTime.seconds);
+    Serial.print(",");
+    Serial.print(fix.latitude());
+    Serial.print(",");
+    Serial.println(fix.longitude());
 
     File dataFile = SD.open(dName, FILE_WRITE);
     dataFile.print(aaReal.x);
@@ -244,18 +246,26 @@ void loop() {
     dataFile.print(",");
     dataFile.print(aaReal.z);
     dataFile.print(",");
+    dataFile.print(fix.dateTime.hours);
+    dataFile.print(",");
+    dataFile.print(fix.dateTime.minutes);
+    dataFile.print(",");
+    dataFile.print(fix.dateTime.seconds);
+    dataFile.print(",");
     dataFile.print(millis());
     dataFile.print(",");
-    dataFile.print(GPS.lastNMEA());
+    dataFile.print(fix.latitudeL());
+    dataFile.print(",");
+    dataFile.println(fix.longitudeL());
     mpu.resetFIFO();
-
-    dataFile.close();
-
     if (trig = 1)
     {
       blinkState = !blinkState;
       digitalWrite(LED_PIN, blinkState);
     }
+    dataFile.close();
+
+
 
     mpu.setIntEnabled(true);
   }
