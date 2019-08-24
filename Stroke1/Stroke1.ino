@@ -1,7 +1,7 @@
 #include <NMEAGPS.h>
 #include "I2Cdev.h"
 #include "MPU6050_6Axis_MotionApps20.h"
-#include <SD.h>
+#include <SdFat.h>
 #include <SPI.h>
 #include "Wire.h"
 #include <GPSport.h>
@@ -38,10 +38,13 @@ float euler[3];         // [psi, theta, phi]    Euler angle container
 float ypr[3];           // [yaw, pitch, roll]   yaw/pitch/roll container and gravity vector
 
 
-char fName[] = "00000000.CSV";
 String dName;
 //SD Setup
 int trig = 0;
+SdFat sd;
+
+char cinBuf[40];
+ArduinoInStream cin(Serial, cinBuf, sizeof(cinBuf));
 
 const int chipSelect = 4;
 
@@ -63,12 +66,18 @@ void dmpDataReady() {
 void setup() {
   Wire.begin();
   Serial.begin(115200);
+  delay(500);
   gpsPort.begin( 57600 );
 
-  //GPS.sendCommand(PMTK_SET_NMEA_OUTPUT_RMCONLY);
-  //GPS.sendCommand(PMTK_SET_NMEA_UPDATE_1HZ);
+  delay(500);
 
-  delay(1000);
+  while (!sd.begin(chipSelect)) {
+    Serial.println("Card failed, or not present");
+    // don't do anything more:
+    return;
+  }
+  
+  Serial.println("Card initialized");
 
   // initialize device
   Serial.println(F("Initializing I2C devices..."));
@@ -100,7 +109,8 @@ void setup() {
     Serial.println(F("DMP ready! Waiting for first interrupt..."));
     dmpReady = true;
 
-    mpu.setRate(19);
+    //1000/1+setRate()
+    mpu.setRate(49);
 
     // get expected DMP packet size for later comparison
     packetSize = mpu.dmpGetFIFOPacketSize();
@@ -114,11 +124,7 @@ void setup() {
     Serial.println(F(")"));
   }
 
-  while (!SD.begin(chipSelect)) {
-    Serial.println("Card failed, or not present");
-    // don't do anything more:
-    return;
-  }
+
 
   mpu.setXAccelOffset(-4196);
   mpu.setYAccelOffset(-451);
@@ -203,20 +209,21 @@ void loop() {
       dName.concat(fix.dateTime.date);
       dName.concat("-");
       dName.concat(fix.dateTime.hours);
-      dName.concat("-");
       dName.concat(fix.dateTime.minutes);
       dName.concat(".csv");
       trig = 1;
     }
 
-    Serial.print("Names: ");
-    Serial.print(fName);
-    Serial.print("\t");
+    Serial.print("Name: ");
     Serial.println(dName);
 
     Serial.print("Fix status:");
     Serial.print(" ");
-    //Serial.println(fix);
+    Serial.println(fix.valid.status);
+
+    Serial.print("Location status:");
+    Serial.print(" ");
+    Serial.println(fix.valid.location);
 
     Serial.print("trig status:");
     Serial.print(" ");
@@ -239,20 +246,16 @@ void loop() {
     Serial.print(",");
     Serial.println(fix.longitude());
 
-    File dataFile = SD.open(dName, FILE_WRITE);
+    File dataFile = sd.open(dName, FILE_WRITE);
+    dataFile.print(millis());
+    dataFile.print(",");
     dataFile.print(aaReal.x);
     dataFile.print(",");
     dataFile.print(aaReal.y);
     dataFile.print(",");
     dataFile.print(aaReal.z);
     dataFile.print(",");
-    dataFile.print(fix.dateTime.hours);
-    dataFile.print(",");
-    dataFile.print(fix.dateTime.minutes);
-    dataFile.print(",");
-    dataFile.print(fix.dateTime.seconds);
-    dataFile.print(",");
-    dataFile.print(millis());
+    dataFile.print(fix.dateTime);
     dataFile.print(",");
     dataFile.print(fix.latitudeL());
     dataFile.print(",");
