@@ -9,6 +9,14 @@
 #include <SPI.h>
 #include <Adafruit_GPS.h>
 
+<<<<<<< Updated upstream:Stroke1.ino
+=======
+#if defined(ARDUINO_SAMD_ZERO) && defined(SERIAL_PORT_USBVIRTUAL)
+// Required for Serial on Zero based boards
+#define Serial SERIAL_PORT_USBVIRTUAL
+#endif
+>>>>>>> Stashed changes:Stroke1/Stroke1.ino
+
 
 // class default I2C address is 0x68
 // specific I2C addresses may be passed as a parameter here
@@ -48,7 +56,17 @@ VectorFloat gravity;    // [x, y, z]            gravity vector
 float euler[3];         // [psi, theta, phi]    Euler angle container
 float ypr[3];           // [yaw, pitch, roll]   yaw/pitch/roll container and gravity vector
 
+<<<<<<< Updated upstream:Stroke1.ino
 // SD setup
+=======
+String dName = "dataLog.csv";
+
+String fName = "dataLog.csv";
+String cMinute;
+//SD Setup
+int trig = 0;
+
+>>>>>>> Stashed changes:Stroke1/Stroke1.ino
 const int chipSelect = 4;
 File dataLog;
 String nameStr = "LogFile0.csv";
@@ -102,6 +120,10 @@ void setup() {
 
   // initialize device
   Serial.println(F("Initializing I2C devices..."));
+<<<<<<< Updated upstream:Stroke1.ino
+=======
+
+>>>>>>> Stashed changes:Stroke1/Stroke1.ino
   mpu.initialize();
   pinMode(INTERRUPT_PIN, INPUT);
   // verify connection
@@ -137,6 +159,7 @@ void setup() {
     Serial.print(devStatus);
     Serial.println(F(")"));
   }
+<<<<<<< Updated upstream:Stroke1.ino
   // 1khz / (1 + 9) = 100 Hz
   uint8_t rate = 99;
   mpu.setRate(rate);
@@ -144,6 +167,25 @@ void setup() {
   // configure LED for output
   pinMode(LED_PIN, OUTPUT);
   dataLog.println("accel x,y,z");
+=======
+
+  if (!SD.begin(chipSelect)) {
+    Serial.println("Card failed, or not present");
+    // don't do anything more:
+    while (1);
+  }
+  mpu.setXAccelOffset(-4196);
+  mpu.setYAccelOffset(-451);
+  mpu.setZAccelOffset(3511);
+  mpu.setXGyroOffset(119);
+  mpu.setYGyroOffset(53);
+  mpu.setZGyroOffset(-10);
+
+
+  // configure LED for output
+  pinMode(LED_PIN, OUTPUT);
+
+>>>>>>> Stashed changes:Stroke1/Stroke1.ino
 }
 
 
@@ -200,36 +242,93 @@ void loop() {
     mpu.dmpGetLinearAccel(&aaReal, &aa, &gravity);
     mpu.dmpGetLinearAccelInWorld(&aaWorld, &aaReal, &q);
 
+<<<<<<< Updated upstream:Stroke1.ino
     //collect GPS data
     char c = GPS.read();
-    dataLog = SD.open(nameStr, FILE_WRITE);
+    //dataLog = SD.open(nameStr, FILE_WRITE);
+=======
 
-    dataLog.print(aaReal.x);
-    dataLog.print(",");
-    dataLog.print(aaReal.y);
-    dataLog.print(",");
-    dataLog.print(aaReal.z);
-    dataLog.print(",");
-    dataLog.print(aaWorld.x);
-    dataLog.print(",");
-    dataLog.print(aaWorld.y);
-    dataLog.print(",");
-    dataLog.println(aaWorld.z);
+    mpu.setIntEnabled(false);
+>>>>>>> Stashed changes:Stroke1/Stroke1.ino
+
+    // read data from the GPS in the 'main loop'
+    char c = GPS.read();
+
+    GPS.parse(GPS.lastNMEA());
+
+    if (GPS.newNMEAreceived()) {
+      // a tricky thing here is if we print the NMEA sentence, or data
+      // we end up not listening and catching other sentences!
+      // so be very wary if using OUTPUT_ALLDATA and trytng to print out data
+      //Serial.println(GPS.lastNMEA()); // this also sets the newNMEAreceived() flag to false
+      if (!GPS.parse(GPS.lastNMEA())) // this also sets the newNMEAreceived() flag to false
+        return; // we can fail to parse a sentence in which case we should just wait for another
+    }
+    //    while (!GPS.fix && trig == 0)
+    //    {
+    //      Serial.print(GPS.fix);
+    //      Serial.println("No Fix yet");
+    //    }
+    if (GPS.fix && trig == 0)
+    {
+      dName = "";
+      dName.concat((String)GPS.month);
+      dName.concat((String)GPS.day);
+      dName.concat((String)GPS.hour);
+      dName.concat((String)GPS.minute);
+      dName.concat(".csv");
+      fName = dName;
+      Serial.println("poop");
+      trig = 1;
+    }
+
+    Serial.println(fName);
+    Serial.print(aaReal.x);
+    Serial.print(",");
+    Serial.print(aaReal.y);
+    Serial.print(",");
+    Serial.print(aaReal.z);
+    Serial.print(",");
+<<<<<<< Updated upstream:Stroke1.ino
+    Serial.print(aaWorld.x);
+    Serial.print(",");
+    Serial.print(aaWorld.y);
+    Serial.print(",");
+    Serial.println(aaWorld.z);
     if (GPS.newNMEAreceived()){ 
     if (!GPS.parse(GPS.lastNMEA()))   // this also sets the newNMEAreceived() flag to false
     {
-        dataLog.println("");
+        Serial.println("");
         return;  // return to top of loop() if sentence does not verify correctly or completely
     }    
-    dataLog.print("\nTime: ");
-    dataLog.print(GPS.hour, DEC); Serial.print(':');
-    dataLog.print(GPS.minute, DEC); Serial.print(':');
-    dataLog.print(GPS.seconds, DEC); Serial.println('.');
+    Serial.print("\nTime: ");
+    Serial.print(GPS.hour, DEC); Serial.print(':');
+    Serial.print(GPS.minute, DEC); Serial.print(':');
+    Serial.print(GPS.seconds, DEC); Serial.println('.');
     }
-    dataLog.close();
+    //dataLog.close();
 
     // blink LED to indicate activity
     blinkState = !blinkState;
     digitalWrite(LED_PIN, blinkState);
+=======
+    Serial.println(GPS.lastNMEA());
+
+    File dataFile = SD.open(fName, FILE_WRITE);
+    dataFile.print(aaReal.x);
+    dataFile.print(",");
+    dataFile.print(aaReal.y);
+    dataFile.print(",");
+    dataFile.print(aaReal.z);
+    dataFile.print(",");
+    dataFile.print(GPS.lastNMEA());
+    mpu.resetFIFO();
+
+    dataFile.close();
+
+    blinkState = !blinkState;
+    digitalWrite(LED_PIN, blinkState);
+    mpu.setIntEnabled(true);
+>>>>>>> Stashed changes:Stroke1/Stroke1.ino
   }
 }
