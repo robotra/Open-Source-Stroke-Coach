@@ -144,7 +144,7 @@ void loop()
   digitalWrite(8, LOW);
 
   digitalWrite(LED_BUILTIN, LOW);
-  delay(100);
+  delay(10);
   digitalWrite(LED_BUILTIN, HIGH);
 }
 
