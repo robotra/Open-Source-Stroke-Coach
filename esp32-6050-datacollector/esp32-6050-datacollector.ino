@@ -1,7 +1,11 @@
 #include <SPI.h>
 #include <SD.h>
 #include <Wire.h>
+#include <TinyGPS++.h>
+#include <SoftwareSerial.h>
 
+
+//MPU constants
 const int MPU_addr = 0x68; // I2C address of the MPU-6050
 int16_t AcX, AcY, AcZ, Tmp, GyX, GyY, GyZ;
 int LED_BUILTIN = 2;
@@ -9,8 +13,20 @@ int LED_BUILTIN = 2;
 // Set the pins used
 #define cardSelect 5
 
+// Software serial for GPS
+// Connect the GPS TX (transmit) pin to Digital 4
+// Connect the GPS RX (receive) pin to Digital 2
+static const int RXPin = 4, TXPin = 2;
+static const uint32_t GPSBaud = 9600;
+// The TinyGPS++ object
+TinyGPSPlus gps;
+
+// The serial connection to the GPS device
+SoftwareSerial ss(RXPin, TXPin);
+
 // blink out an error code
-void error(uint8_t errno) {
+void error(uint8_t errno) 
+{
   while (1) {
     uint8_t i;
     for (i = 0; i < errno; i++) {
@@ -28,13 +44,15 @@ void error(uint8_t errno) {
 
 char filename[15];
 
-void setup() {
+void setup() 
+{
   // connect at 115200 so we can read the GPS fast enough and echo without dropping chars
   // also spit it out
   Serial.begin(115200);
   Serial.println("\r\nAnalog logger test");
   pinMode(13, OUTPUT);
   init6050();
+  initGPS();
   //
   pinMode (LED_BUILTIN, OUTPUT);
   digitalWrite(LED_BUILTIN, HIGH);
@@ -87,18 +105,41 @@ void getAccels()
   GyZ = Wire.read() << 8 | Wire.read(); // 0x47 (GYRO_ZOUT_H) & 0x48 (GYRO_ZOUT_L)
 }
 
-void loop() {
+void loop() 
+{
   digitalWrite(8, HIGH);
   getAccels();
   Serial.print("AcX = "); Serial.print(AcX);
   Serial.print(" | AcY = "); Serial.print(AcY);
-  Serial.print(" | AcZ = "); Serial.print(AcZ);
+  Serial.print(" | AcZ = "); Serial.print(AcZ); Serial.print(",");
   File logfile;
   logfile = SD.open(filename, FILE_APPEND);
   logfile.print(AcX); logfile.print(",");
   logfile.print(AcY); logfile.print(",");
-  logfile.print(AcZ); logfile.println(",");
-  Serial.print("A0 = "); Serial.println(analogRead(0));
+  logfile.print(AcZ); logfile.print(",");
+
+  while (ss.available() > 0)
+  {
+    gps.encode(ss.read());
+  }
+
+  logfile.print(gps.location.lat(), 6);
+  logfile.print(",");
+  logfile.print(gps.location.lng(), 6);
+  logfile.print(",");
+  logfile.print(gps.speed.value());
+  logfile.print(",");
+  logfile.print(gps.course.deg());
+  logfile.println(",");
+  Serial.print(gps.location.lat(), 6);
+  Serial.print(",");
+  Serial.print(gps.location.lng(), 6);
+  Serial.print(",");
+  Serial.print(gps.speed.value());
+  Serial.print(",");
+  Serial.print(gps.course.deg());
+  Serial.println(",");
+
   logfile.close();
   digitalWrite(8, LOW);
 
@@ -107,10 +148,23 @@ void loop() {
   digitalWrite(LED_BUILTIN, HIGH);
 }
 
-void init6050() {
+void init6050() 
+{
   Wire.begin();
   Wire.beginTransmission(MPU_addr);
   Wire.write(0x6B); // PWR_MGMT_1 register
   Wire.write(0); // set to zero (wakes up the MPU-6050)
   Wire.endTransmission(true);
+}
+
+void initGPS() 
+{
+  ss.begin(GPSBaud);
+  delay(1000);
+
+  // you can send various commands to get it started
+  // Sending command for RMCGGA
+  ss.println("$PMTK314,0,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0*28");
+  // Sending command for 5Hz
+  ss.println("$PMTK220,200*2C");
 }
