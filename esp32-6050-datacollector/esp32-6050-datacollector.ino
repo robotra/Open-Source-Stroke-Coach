@@ -169,6 +169,7 @@ void loop() {
   if (!dmpReady) return;
   // read a packet from FIFO
   if (mpu.dmpGetCurrentFIFOPacket(fifoBuffer)) { // Get the Latest packet
+    detachInterrupt(INTERRUPT_PIN)
     mpu.dmpGetQuaternion(&q, fifoBuffer);
     mpu.dmpGetAccel(&aa, fifoBuffer);
     mpu.dmpGetGravity(&gravity, &q);
@@ -196,6 +197,8 @@ void loop() {
     // blink LED to indicate activity
     blinkState = !blinkState;
     digitalWrite(LED_PIN, blinkState);
+    mpu.resetFIFO();
+    attachInterrupt(INTERRUPT_PIN, dmpDataReady, RISING);
   }
 }
 
