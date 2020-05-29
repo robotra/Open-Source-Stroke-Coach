@@ -1,6 +1,8 @@
 {
   "ExpandedNodes": [
-    ""
+    "",
+    "\\esp32-6050-datacollector"
   ],
+  "SelectedNode": "\\esp32-6050-datacollector\\esp32-6050-datacollector.ino",
   "PreviewInSolutionExplorer": false
 }

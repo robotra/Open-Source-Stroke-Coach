@@ -170,7 +170,7 @@ void loop() {
   if (!dmpReady) return;
   // read a packet from FIFO
   if (mpu.dmpGetCurrentFIFOPacket(fifoBuffer)) { // Get the Latest packet
-    detachInterrupt(INTERRUPT_PIN)
+    detachInterrupt(INTERRUPT_PIN);
     mpu.dmpGetQuaternion(&q, fifoBuffer);
     mpu.dmpGetAccel(&aa, fifoBuffer);
     mpu.dmpGetGravity(&gravity, &q);
