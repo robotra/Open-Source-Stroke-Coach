@@ -8,9 +8,9 @@
 
 MPU6050 mpu;
 
-//test commit 
-#define INTERRUPT_PIN 15  // use pin 2 on Arduino Uno & most boards
-#define LED_PIN 2 // (Arduino is 13, Teensy is 11, Teensy++ is 6)
+
+#define INTERRUPT_PIN 15  // using pin 15 on ESP32 because any pin can be an interrupt
+#define LED_PIN 2 // (ESP32 is 2, Arduino is 13, Teensy is 11, Teensy++ is 6)
 bool blinkState = false;
 
 
@@ -28,7 +28,7 @@ static const uint32_t GPSBaud = 9600;
 // The TinyGPS++ object
 TinyGPSPlus gps;
 
-// The serial connection to the GPS device
+// The serial connection to the GPS device, using software serial for flexibility in pin assignemnt
 SoftwareSerial ss(RXPin, TXPin);
 
 
