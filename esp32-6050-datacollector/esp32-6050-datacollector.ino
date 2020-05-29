@@ -65,8 +65,7 @@ void dmpDataReady() {
 
 void setup() {
   // join I2C bus (I2Cdev library doesn't do this automatically)
-  Wire.begin(21, 22, 400000);
-  Wire.setClock(400000);
+  Wire.begin(21, 22, 600000);
 
   pinMode(13, OUTPUT);
   initGPS();
@@ -106,7 +105,8 @@ void setup() {
     // turn on the DMP, now that it's ready
     Serial.println(F("Enabling DMP..."));
     mpu.setDMPEnabled(true);
-
+    //Set sample collection rate to 100Hz
+    mpu.setRate(9);  
 
     pinMode(INTERRUPT_PIN, INPUT);
     attachInterrupt(INTERRUPT_PIN, dmpDataReady, RISING);
