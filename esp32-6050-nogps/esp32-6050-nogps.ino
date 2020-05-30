@@ -4,6 +4,7 @@
 #include <SPI.h>
 #include <SD.h>
 #include <SoftwareSerial.h>
+#include <Lpf.h>
 
 MPU6050 mpu;
 
@@ -34,6 +35,12 @@ VectorInt16 aaReal;     // [x, y, z]            gravity-free accel sensor measur
 VectorInt16 aaWorld;    // [x, y, z]            world-frame accel sensor measurements
 VectorFloat gravity;    // [x, y, z]            gravity vector
 
+
+#define BANDWIDTH_HZ          1.0     // 3-dB bandwidth of the filter
+#define SAMPLE_TIME_SEC       1e-2   // How often are we upodating the loop? The LPF tracks the sample time internally
+#define SIGNAL_FREQUENCY_HZ   0.3     // Our test input signal frequency
+
+LPF lpf(BANDWIDTH_HZ,IS_BANDWIDTH_HZ);      
 
 // ================================================================
 // ===               INTERRUPT DETECTION ROUTINE                ===
@@ -145,8 +152,6 @@ void setup() {
 
 }
 
-
-
 // ================================================================
 // ===                    MAIN PROGRAM LOOP                     ===
 // ================================================================
@@ -162,6 +167,8 @@ void loop() {
     mpu.dmpGetGravity(&gravity, &q);
     mpu.dmpGetLinearAccel(&aaReal, &aa, &gravity);
 
+    float aVect = sqrt(aaReal.x*aaReal.x + aaReal.y*aaReal.y + aaReal.z*aaReal.z);
+
     logfile = SD.open(filename, FILE_APPEND);
     logfile.print(millis()); logfile.print(",");// Raw time in HHMMSSCC format (u32)
     logfile.print(aaReal.x); logfile.print(",");
@@ -172,6 +179,13 @@ void loop() {
     Serial.print(aaReal.x); Serial.print(",");
     Serial.print(aaReal.y); Serial.print(",");
     Serial.print(aaReal.z); Serial.print(",");
+    
+    Serial.print(q.x); Serial.print(",");
+    Serial.print(q.y); Serial.print(",");
+    Serial.print(q.z); Serial.print(",");
+    
+    Serial.print((aVect)); Serial.print(",");
+    Serial.print(lpf.NextValue(aVect)); Serial.print(",");
 
     logfile.println(",");
     Serial.println(",");
