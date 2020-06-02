@@ -51,7 +51,9 @@ VectorFloat gravity;    // [x, y, z]            gravity vector
 #define SAMPLE_TIME_SEC       1e-2   // How often are we upodating the loop? The LPF tracks the sample time internally
 #define SIGNAL_FREQUENCY_HZ   0.3     // Our test input signal frequency
 
-LPF lpf(BANDWIDTH_HZ, IS_BANDWIDTH_HZ);
+LPF lpfx(BANDWIDTH_HZ, IS_BANDWIDTH_HZ);
+LPF lpfy(BANDWIDTH_HZ, IS_BANDWIDTH_HZ);
+LPF lpfz(BANDWIDTH_HZ, IS_BANDWIDTH_HZ);
 
 
 
@@ -196,30 +198,23 @@ void loop() {
 
     // The coordinates define the right end of the text
     display.setTextAlignment(TEXT_ALIGN_CENTER);
-    display.drawString(64, 22, String(lpf.NextValue(aVect)));
+    display.drawString(64, 22, String("test"));
 
     display.display();
 
     logfile = SD.open(filename, FILE_APPEND);
     logfile.print(millis()); logfile.print(",");// Raw time in HHMMSSCC format (u32)
-    logfile.print(aaReal.x); logfile.print(",");
-    logfile.print(aaReal.y); logfile.print(",");
-    logfile.print(aaReal.z); logfile.print(",");
-    logfile.print(lpf.NextValue(aVect)); logfile.print(",");
+    logfile.print(lpfx.NextValue(aaReal.x)); logfile.print(",");
+    logfile.print(lpfy.NextValue(aaReal.y)); logfile.print(",");
+    logfile.print(lpfz.NextValue(aaReal.z)); logfile.print(",");
+    logfile.println(",");
+    logfile.close();
     
     Serial.print(millis()); Serial.print(",");// Raw time in HHMMSSCC format (u32)
-    Serial.print(aaReal.x); Serial.print(",");
-    Serial.print(aaReal.y); Serial.print(",");
-    Serial.print(aaReal.z); Serial.print(",");
-
-    Serial.print(q.x); Serial.print(",");
-    Serial.print(q.y); Serial.print(",");
-    Serial.print(q.z); Serial.print(",");
-
-    Serial.print((aVect)); Serial.print(",");
-    Serial.print(lpf.NextValue(aVect)); Serial.print(",");
-
-    logfile.println(",");
+    Serial.print(lpfx.NextValue(aaReal.x)); Serial.print(",");
+    Serial.print(lpfy.NextValue(aaReal.y)); Serial.print(",");
+    Serial.print(lpfz.NextValue(aaReal.z)); Serial.print(",");
+    Serial.print(aVect); Serial.print(",");
     Serial.println(",");
 
     // blink LED to indicate activity
