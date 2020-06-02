@@ -1,3 +1,13 @@
+/* Building an ESP32 Based stroke coach, built on JRowbergs I2C library, for 6050 acclerometer interfacing
+   https://github.com/jrowberg/i2cdevlib
+   An arduino based implementation a low pass filter, from Bill Williams
+   https://github.com/Billwilliams1952/Arduino-Cascadable-Low-Pass-Filter
+   With another version for the addition of an Adafruit Ultimate GPS module
+   https://www.adafruit.com/product/746
+
+
+*/
+
 #include "I2Cdev.h"
 #include "MPU6050_6Axis_MotionApps20.h"
 #include "Wire.h"
@@ -5,17 +15,18 @@
 #include <SD.h>
 #include <SoftwareSerial.h>
 #include <Lpf.h>
+#include "SSD1306Wire.h"        // legacy: #include "SSD1306.h"
 
-MPU6050 mpu;
+//initialize MPU object
+MPU6050 mpu(0x68);
 
-//test
-
+//ESP32 board constants
 #define INTERRUPT_PIN 15  // using pin 15 on ESP32 because any pin can be an interrupt
 #define LED_PIN 2 // (ESP32 is 2, Arduino is 13, Teensy is 11, Teensy++ is 6)
 bool blinkState = false;
 
-
 // Set the variables for SD Cards
+//FInal version probably wont need an SD card with the ESP32 due to the large enough internal memory (maybe)
 #define cardSelect 5 //SD Card pin select
 File logfile;
 char filename[15];
@@ -28,7 +39,7 @@ uint16_t packetSize;    // expected DMP packet size (default is 42 bytes)
 uint16_t fifoCount;     // count of all bytes currently in FIFO
 uint8_t fifoBuffer[64]; // FIFO storage buffer
 
-// orientation/motion vars
+// Orientation/motion vars
 Quaternion q;           // [w, x, y, z]         quaternion container
 VectorInt16 aa;         // [x, y, z]            accel sensor measurements
 VectorInt16 aaReal;     // [x, y, z]            gravity-free accel sensor measurements
@@ -40,7 +51,12 @@ VectorFloat gravity;    // [x, y, z]            gravity vector
 #define SAMPLE_TIME_SEC       1e-2   // How often are we upodating the loop? The LPF tracks the sample time internally
 #define SIGNAL_FREQUENCY_HZ   0.3     // Our test input signal frequency
 
-LPF lpf(BANDWIDTH_HZ,IS_BANDWIDTH_HZ);      
+LPF lpf(BANDWIDTH_HZ, IS_BANDWIDTH_HZ);
+
+
+
+SSD1306Wire display(0x3c, 21, 22);   // ADDRESS, SDA, SCL  -  SDA and SCL usually populate automatically based on your board's pins_arduino.h
+
 
 // ================================================================
 // ===               INTERRUPT DETECTION ROUTINE                ===
@@ -59,6 +75,7 @@ void dmpDataReady() {
 void setup() {
   // join I2C bus (I2Cdev library doesn't do this automatically)
   Wire.begin(21, 22, 600000);
+
 
   pinMode(13, OUTPUT);
 
@@ -97,9 +114,9 @@ void setup() {
     // turn on the DMP, now that it's ready
     Serial.println(F("Enabling DMP..."));
     mpu.setDMPEnabled(true);
-    
+
     //Set sample collection rate to 100Hz
-    mpu.setRate(9);  
+    mpu.setRate(9);
 
     pinMode(INTERRUPT_PIN, INPUT);
     attachInterrupt(INTERRUPT_PIN, dmpDataReady, RISING);
@@ -150,6 +167,12 @@ void setup() {
   pinMode(8, OUTPUT);
   Serial.println("Ready!");
 
+
+  //display initialization
+  display.init();
+  display.flipScreenVertically();
+  display.setFont(ArialMT_Plain_24);
+
 }
 
 // ================================================================
@@ -167,23 +190,32 @@ void loop() {
     mpu.dmpGetGravity(&gravity, &q);
     mpu.dmpGetLinearAccel(&aaReal, &aa, &gravity);
 
-    float aVect = sqrt(aaReal.x*aaReal.x + aaReal.y*aaReal.y + aaReal.z*aaReal.z);
+    float aVect = sqrt(aaReal.x * aaReal.x + aaReal.y * aaReal.y + aaReal.z * aaReal.z);
+
+    display.clear();
+
+    // The coordinates define the right end of the text
+    display.setTextAlignment(TEXT_ALIGN_CENTER);
+    display.drawString(64, 22, String(lpf.NextValue(aVect)));
+
+    display.display();
 
     logfile = SD.open(filename, FILE_APPEND);
     logfile.print(millis()); logfile.print(",");// Raw time in HHMMSSCC format (u32)
     logfile.print(aaReal.x); logfile.print(",");
     logfile.print(aaReal.y); logfile.print(",");
     logfile.print(aaReal.z); logfile.print(",");
+    logfile.print(lpf.NextValue(aVect)); logfile.print(",");
     
     Serial.print(millis()); Serial.print(",");// Raw time in HHMMSSCC format (u32)
     Serial.print(aaReal.x); Serial.print(",");
     Serial.print(aaReal.y); Serial.print(",");
     Serial.print(aaReal.z); Serial.print(",");
-    
+
     Serial.print(q.x); Serial.print(",");
     Serial.print(q.y); Serial.print(",");
     Serial.print(q.z); Serial.print(",");
-    
+
     Serial.print((aVect)); Serial.print(",");
     Serial.print(lpf.NextValue(aVect)); Serial.print(",");
 

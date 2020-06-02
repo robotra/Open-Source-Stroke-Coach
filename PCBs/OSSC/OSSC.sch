@@ -1,0 +1,177 @@
+EESchema Schematic File Version 4
+EELAYER 30 0
+EELAYER END
+$Descr A4 11693 8268
+encoding utf-8
+Sheet 1 1
+Title ""
+Date ""
+Rev ""
+Comp ""
+Comment1 ""
+Comment2 ""
+Comment3 ""
+Comment4 ""
+$EndDescr
+$Comp
+L RF_Module:ESP32-WROOM-32 U2
+U 1 1 5ED2796E
+P 3150 2800
+F 0 "U2" H 3150 4381 50  0000 C CNN
+F 1 "ESP32-WROOM-32" H 3150 4290 50  0000 C CNN
+F 2 "RF_Module:ESP32-WROOM-32" H 3150 1300 50  0001 C CNN
+F 3 "https://www.espressif.com/sites/default/files/documentation/esp32-wroom-32_datasheet_en.pdf" H 2850 2850 50  0001 C CNN
+	1    3150 2800
+	1    0    0    -1  
+$EndComp
+$Comp
+L Regulator_Linear:MCP1700-3302E_SOT23 U1
+U 1 1 5ED289C5
+P 1450 1400
+F 0 "U1" H 1450 1642 50  0000 C CNN
+F 1 "MCP1700-3302E_SOT23" H 1450 1551 50  0000 C CNN
+F 2 "Package_TO_SOT_SMD:SOT-23" H 1450 1625 50  0001 C CNN
+F 3 "http://ww1.microchip.com/downloads/en/DeviceDoc/20001826D.pdf" H 1450 1400 50  0001 C CNN
+	1    1450 1400
+	1    0    0    -1  
+$EndComp
+$Comp
+L power:GND #PWR0101
+U 1 1 5ED29767
+P 1450 1700
+F 0 "#PWR0101" H 1450 1450 50  0001 C CNN
+F 1 "GND" H 1455 1527 50  0000 C CNN
+F 2 "" H 1450 1700 50  0001 C CNN
+F 3 "" H 1450 1700 50  0001 C CNN
+	1    1450 1700
+	1    0    0    -1  
+$EndComp
+$Comp
+L power:+BATT #PWR0103
+U 1 1 5ED2A0AC
+P 1150 1400
+F 0 "#PWR0103" H 1150 1250 50  0001 C CNN
+F 1 "+BATT" V 1165 1527 50  0000 L CNN
+F 2 "" H 1150 1400 50  0001 C CNN
+F 3 "" H 1150 1400 50  0001 C CNN
+	1    1150 1400
+	0    -1   -1   0   
+$EndComp
+Wire Wire Line
+	1750 1400 3150 1400
+Connection ~ 3150 1400
+Wire Wire Line
+	5600 2050 5600 1400
+Wire Wire Line
+	5600 1400 3150 1400
+$Comp
+L power:GND #PWR0104
+U 1 1 5ED2E0F5
+P 5500 3750
+F 0 "#PWR0104" H 5500 3500 50  0001 C CNN
+F 1 "GND" H 5505 3577 50  0000 C CNN
+F 2 "" H 5500 3750 50  0001 C CNN
+F 3 "" H 5500 3750 50  0001 C CNN
+	1    5500 3750
+	1    0    0    -1  
+$EndComp
+$Comp
+L Device:C C1
+U 1 1 5ED2ED0E
+P 5500 3600
+F 0 "C1" H 5615 3646 50  0000 L CNN
+F 1 "C" H 5615 3555 50  0000 L CNN
+F 2 "Capacitor_SMD:C_0402_1005Metric" H 5538 3450 50  0001 C CNN
+F 3 "~" H 5500 3600 50  0001 C CNN
+	1    5500 3600
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	4800 2450 4250 2450
+Wire Wire Line
+	4250 2450 4250 3000
+Wire Wire Line
+	4250 3000 3750 3000
+$Comp
+L Sensor_Motion:MPU-6050 U3
+U 1 1 5ED2C978
+P 5500 2750
+F 0 "U3" H 5500 1961 50  0000 C CNN
+F 1 "MPU-6050" H 5500 1870 50  0000 C CNN
+F 2 "Sensor_Motion:InvenSense_QFN-24_4x4mm_P0.5mm" H 5500 1950 50  0001 C CNN
+F 3 "https://store.invensense.com/datasheets/invensense/MPU-6050_DataSheet_V3%204.pdf" H 5500 2600 50  0001 C CNN
+	1    5500 2750
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	4800 2550 4300 2550
+Wire Wire Line
+	4300 2550 4300 3100
+Wire Wire Line
+	4300 3100 3750 3100
+Wire Wire Line
+	6200 2450 6200 1950
+Wire Wire Line
+	6200 1950 4050 1950
+Wire Wire Line
+	4050 1950 4050 2500
+Wire Wire Line
+	4050 2500 3750 2500
+$Comp
+L Connector:Conn_01x02_Female J1
+U 1 1 5ED2BC1D
+P 750 2400
+F 0 "J1" H 642 2075 50  0000 C CNN
+F 1 "Conn_01x02_Female" H 642 2166 50  0000 C CNN
+F 2 "Connector_JST:JST_SH_SM02B-SRSS-TB_1x02-1MP_P1.00mm_Horizontal" H 750 2400 50  0001 C CNN
+F 3 "~" H 750 2400 50  0001 C CNN
+	1    750  2400
+	-1   0    0    1   
+$EndComp
+$Comp
+L power:+BATT #PWR0105
+U 1 1 5ED2D12D
+P 950 2300
+F 0 "#PWR0105" H 950 2150 50  0001 C CNN
+F 1 "+BATT" V 965 2428 50  0000 L CNN
+F 2 "" H 950 2300 50  0001 C CNN
+F 3 "" H 950 2300 50  0001 C CNN
+	1    950  2300
+	0    1    1    0   
+$EndComp
+$Comp
+L OSSC-eagle-import:GND #0101
+U 1 1 5ED2DFDC
+P 950 2500
+F 0 "#0101" H 1000 2550 50  0001 C CNN
+F 1 "GND" H 1028 2538 42  0000 L CNN
+F 2 "" H 950 2500 50  0001 C CNN
+F 3 "" H 950 2500 50  0001 C CNN
+	1    950  2500
+	1    0    0    -1  
+$EndComp
+$Comp
+L power:GND #PWR01
+U 1 1 5ED353E5
+P 3150 4500
+F 0 "#PWR01" H 3150 4250 50  0001 C CNN
+F 1 "GND" H 3155 4327 50  0000 C CNN
+F 2 "" H 3150 4500 50  0001 C CNN
+F 3 "" H 3150 4500 50  0001 C CNN
+	1    3150 4500
+	1    0    0    -1  
+$EndComp
+$Comp
+L Device:C C2
+U 1 1 5ED353EB
+P 3150 4350
+F 0 "C2" H 3265 4396 50  0000 L CNN
+F 1 "C" H 3265 4305 50  0000 L CNN
+F 2 "Capacitor_SMD:C_0402_1005Metric" H 3188 4200 50  0001 C CNN
+F 3 "~" H 3150 4350 50  0001 C CNN
+	1    3150 4350
+	1    0    0    -1  
+$EndComp
+Text Label 5600 2050 0    50   ~ 0
+3.3V
+$EndSCHEMATC

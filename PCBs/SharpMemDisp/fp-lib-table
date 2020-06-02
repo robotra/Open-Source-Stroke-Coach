@@ -1,0 +1,3 @@
+(fp_lib_table
+  (lib (name Adafruit_SharpMemoryDisplay)(type KiCad)(uri "$(KIPRJMOD)/Adafruit_SharpMemoryDisplay.pretty")(options "")(descr ""))
+)
