@@ -11,4 +11,4 @@ Optional:
 * GPS (I used the Adafruit ultimate GPS breakout)
 
 ## Software
-Stroke detection is based on the values from teh accelerometer, smoothed by a low pass filter. This filtered data is then used to feed a peak detection algorithm, and time between peaks is used to calcualte stroke rate. 
+Stroke detection is based on the values from teh accelerometer, smoothed by a low pass filter. This filtered data is then used to feed a peak detection algorithm, and time between peaks is used to calculate stroke rate. 
