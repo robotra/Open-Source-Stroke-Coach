@@ -140,7 +140,28 @@ void setup() {
 
   pinMode(8, OUTPUT);
   Serial.println("Ready!");
+  if (!SD.begin(cardSelect)) {
+    Serial.println("Card init. failed!");
+    digitalWrite(LED_PIN, HIGH);
+  }
+  strcpy(filename, "/ANALOG00.TXT");
+  for (uint8_t i = 0; i < 100; i++) {
+    filename[7] = '0' + i / 10;
+    filename[8] = '0' + i % 10;
+    // create if does not exist, do not open existing, write, sync after write
+    if (! SD.exists(filename)) {
+      break;
+    }
+  }
 
+  File logfile = SD.open(filename, FILE_WRITE);
+  if ( ! logfile ) {
+    Serial.print("Couldnt create ");
+    Serial.println(filename);
+  }
+  logfile.close();
+  Serial.print("Writing to ");
+  Serial.println(filename);
   //display initialization
   display.init();
   display.flipScreenVertically();
@@ -202,6 +223,21 @@ void loop() {
       //reset previous time
       pTime = millis();
     }
+    
+    logfile = SD.open(filename, FILE_APPEND);
+    logfile.print(millis()); logfile.print(",");// Raw time in HHMMSSCC format (u32)
+    logfile.print(lpfx.NextValue(aaReal.x)); logfile.print(",");
+    logfile.print(lpfy.NextValue(aaReal.y)); logfile.print(",");
+    logfile.print(lpfz.NextValue(aaReal.z)); logfile.print(",");
+    logfile.print(rBuffer[0]); logfile.println(",");
+    logfile.close();
+    
+    
+    Serial.print(millis()); Serial.print(",");// Raw time in HHMMSSCC format (u32)
+    Serial.print(lpfx.NextValue(aaReal.x)); Serial.print(",");
+    Serial.print(lpfy.NextValue(aaReal.y)); Serial.print(",");
+    Serial.print(lpfz.NextValue(aaReal.z)); Serial.print(",");
+    Serial.print(rBuffer[0]); Serial.println(",");
     Serial.println(rBuffer[0]);
 
     display.clear();
