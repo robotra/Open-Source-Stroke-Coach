@@ -1,3 +1,5 @@
+
+
 /* Building an ESP32 Based stroke coach, built on JRowbergs I2C library, for 6050 acclerometer interfacing
    https://github.com/jrowberg/i2cdevlib
    An arduino based implementation a low pass filter, from Bill Williams
@@ -16,6 +18,7 @@
 #include <SoftwareSerial.h>
 #include <Lpf.h>
 #include "SSD1306Wire.h"        // legacy: #include "SSD1306.h"
+#include <CircularBuffer.h>
 
 //initialize MPU object
 MPU6050 mpu(0x68);
@@ -55,11 +58,14 @@ LPF lpfx(BANDWIDTH_HZ, IS_BANDWIDTH_HZ);
 LPF lpfy(BANDWIDTH_HZ, IS_BANDWIDTH_HZ);
 LPF lpfz(BANDWIDTH_HZ, IS_BANDWIDTH_HZ);
 
-
-
 SSD1306Wire display(0x3c, 21, 22);   // ADDRESS, SDA, SCL  -  SDA and SCL usually populate automatically based on your board's pins_arduino.h
 
-
+CircularBuffer<int, 1000> aBuffer;
+CircularBuffer<int, 100> mBuffer;
+CircularBuffer<int, 1000> rBuffer;
+float max_v;
+int pTime;
+int cTime;
 // ================================================================
 // ===               INTERRUPT DETECTION ROUTINE                ===
 // ================================================================
@@ -78,7 +84,6 @@ void setup() {
   // join I2C bus (I2Cdev library doesn't do this automatically)
   Wire.begin(21, 22, 600000);
 
-
   pinMode(13, OUTPUT);
 
   Serial.begin(115200);
@@ -87,14 +92,6 @@ void setup() {
   Serial.println(F("Initializing I2C devices..."));
   delay(500);
   mpu.initialize();
-  delay(500);
-
-  // verify connection
-  Serial.println(F("Testing device connections..."));
-  Serial.println(mpu.testConnection() ? F("MPU6050 connection successful") : F("MPU6050 connection failed"));
-
-  // load and configure the DMP
-  Serial.println(F("Initializing DMP..."));
   delay(500);
   devStatus = mpu.dmpInitialize();
   delay(500);
@@ -113,8 +110,6 @@ void setup() {
     mpu.CalibrateAccel(6);
     mpu.CalibrateGyro(6);
     mpu.PrintActiveOffsets();
-    // turn on the DMP, now that it's ready
-    Serial.println(F("Enabling DMP..."));
     mpu.setDMPEnabled(true);
 
     //Set sample collection rate to 100Hz
@@ -143,32 +138,8 @@ void setup() {
   // configure LED for output
   pinMode(LED_PIN, OUTPUT);
 
-  if (!SD.begin(cardSelect)) {
-    Serial.println("Card init. failed!");
-    digitalWrite(LED_PIN, HIGH);
-  }
-  strcpy(filename, "/ANALOG00.TXT");
-  for (uint8_t i = 0; i < 100; i++) {
-    filename[7] = '0' + i / 10;
-    filename[8] = '0' + i % 10;
-    // create if does not exist, do not open existing, write, sync after write
-    if (! SD.exists(filename)) {
-      break;
-    }
-  }
-
-  File logfile = SD.open(filename, FILE_WRITE);
-  if ( ! logfile ) {
-    Serial.print("Couldnt create ");
-    Serial.println(filename);
-  }
-  logfile.close();
-  Serial.print("Writing to ");
-  Serial.println(filename);
-
   pinMode(8, OUTPUT);
   Serial.println("Ready!");
-
 
   //display initialization
   display.init();
@@ -192,30 +163,46 @@ void loop() {
     mpu.dmpGetGravity(&gravity, &q);
     mpu.dmpGetLinearAccel(&aaReal, &aa, &gravity);
 
-    float aVect = sqrt(aaReal.x * aaReal.x + aaReal.y * aaReal.y + aaReal.z * aaReal.z);
+    float aaX = lpfx.NextValue(aaReal.x);
 
-    display.clear();
+    //Add filtered accel value to head of buffer
+    aBuffer.unshift(aaX);
 
-    // The coordinates define the right end of the text
-    display.setTextAlignment(TEXT_ALIGN_CENTER);
-    display.drawString(64, 22, String("test"));
-
-    display.display();
-
-    logfile = SD.open(filename, FILE_APPEND);
-    logfile.print(millis()); logfile.print(",");// Raw time in HHMMSSCC format (u32)
-    logfile.print(lpfx.NextValue(aaReal.x)); logfile.print(",");
-    logfile.print(lpfy.NextValue(aaReal.y)); logfile.print(",");
-    logfile.print(lpfz.NextValue(aaReal.z)); logfile.print(",");
-    logfile.println(",");
-    logfile.close();
+    //every loop set max accel to zero
+    max_v = 0;
     
-    Serial.print(millis()); Serial.print(",");// Raw time in HHMMSSCC format (u32)
-    Serial.print(lpfx.NextValue(aaReal.x)); Serial.print(",");
-    Serial.print(lpfy.NextValue(aaReal.y)); Serial.print(",");
-    Serial.print(lpfz.NextValue(aaReal.z)); Serial.print(",");
-    Serial.print(aVect); Serial.print(",");
-    Serial.println(",");
+    //go through the first 100 elements of the Accel buffer
+    for ( int i = 0; i < 100; i++ )
+    {
+      // if the accel value in i is the biggest
+      if ( aBuffer[i] >= max_v )
+      {
+        //change max_v
+        max_v = aBuffer[i];
+      }
+      //add max value to the max value buffer
+      mBuffer.unshift(max_v);
+    }
+    
+    float vAvg;
+
+    //calcualte average of the previous [size of buffer] maximum values
+    for ( int i = 0; i < mBuffer.size(); i++ )
+    {
+      vAvg += mBuffer[i];
+    }
+    vAvg = vAvg/mBuffer.size();
+
+    // if the current acceleration value is greater than 90% of avereage of the previous 100 max values 
+    // and it has been at least a second since the last measurement, 
+    if(aaX > 0.9*vAvg && millis()-pTime > 1000)
+    {
+      //add rate based on peak to peak to the rate measurement buffer
+      rBuffer.unshift(1/((millis() - pTime)/60000));
+      //reset previous time
+      pTime = millis();
+    }
+    
 
     // blink LED to indicate activity
     blinkState = !blinkState;
