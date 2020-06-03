@@ -64,8 +64,8 @@ CircularBuffer<int, 1000> aBuffer;
 CircularBuffer<int, 100> mBuffer;
 CircularBuffer<int, 1000> rBuffer;
 float max_v;
-int pTime;
-int cTime;
+float pTime;
+float cTime;
 // ================================================================
 // ===               INTERRUPT DETECTION ROUTINE                ===
 // ================================================================
@@ -169,8 +169,8 @@ void loop() {
     aBuffer.unshift(aaX);
 
     //every loop set max accel to zero
-    max_v = 0;
-    
+    max_v = 1;
+
     //go through the first 100 elements of the Accel buffer
     for ( int i = 0; i < 100; i++ )
     {
@@ -183,26 +183,31 @@ void loop() {
       //add max value to the max value buffer
       mBuffer.unshift(max_v);
     }
-    
-    float vAvg;
+
+    float vAvg = 1.0;
 
     //calcualte average of the previous [size of buffer] maximum values
-    for ( int i = 0; i < mBuffer.size(); i++ )
+    for ( int i = 0; i < 100; i++ )
     {
       vAvg += mBuffer[i];
     }
-    vAvg = vAvg/mBuffer.size();
+    vAvg = vAvg / 100;
 
-    // if the current acceleration value is greater than 90% of avereage of the previous 100 max values 
-    // and it has been at least a second since the last measurement, 
-    if(aaX > 0.9*vAvg && millis()-pTime > 1000)
+    // if the current acceleration value is greater than 90% of avereage of the previous 100 max values
+    // and it has been at least a second since the last measurement,
+    if (aaX > 0.9 * vAvg && millis() - pTime > 1000)
     {
       //add rate based on peak to peak to the rate measurement buffer
-      rBuffer.unshift(1/((millis() - pTime)/60000));
+      rBuffer.unshift(1 / ((millis() - pTime) / 60000));
       //reset previous time
       pTime = millis();
     }
-    
+    Serial.println(rBuffer[0]);
+
+    display.clear();
+
+    display.println(String(rBuffer[0]));
+    display.display();      // Show initial text
 
     // blink LED to indicate activity
     blinkState = !blinkState;
