@@ -17,3 +17,7 @@ Stroke detection is based on the values from teh accelerometer, smoothed by a lo
 * GPS
 * Save to SD card as GPX file
 * Then build out integration to the Strava API
+* BLE HRM connection
+* UI
+* Minimize scope creep
+* PCB and reflow soldering 
