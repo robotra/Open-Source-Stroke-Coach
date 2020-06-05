@@ -12,3 +12,8 @@ Optional:
 
 ## Software
 Stroke detection is based on the values from teh accelerometer, smoothed by a low pass filter. This filtered data is then used to feed a peak detection algorithm, and time between peaks is used to calculate stroke rate. 
+
+## To-do
+* GPS
+* Save to SD card as GPX file
+* Then build out integration to the Strava API
