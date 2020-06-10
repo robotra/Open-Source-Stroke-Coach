@@ -1,0 +1,12 @@
+Reference, Quantity, Value, Footprint, Datasheet
+C2 ,1,"2.2nF","Capacitor_SMD:C_0402_1005Metric","~"
+C3 C1 C5 ,3,"0.1uF","Capacitor_SMD:C_0402_1005Metric","~"
+C4 ,1,"2.3nF","Capacitor_SMD:C_0402_1005Metric","~"
+J1 ,1,"Conn_01x02_Female","Connector_JST:JST_SH_SM02B-SRSS-TB_1x02-1MP_P1.00mm_Horizontal","~"
+J2 ,1,"Conn_01x04","Connector_PinHeader_1.27mm:PinHeader_1x04_P1.27mm_Vertical","~"
+J3 J4 ,2,"Conn_01x01","Connector_PinHeader_1.00mm:PinHeader_1x01_P1.00mm_Vertical","~"
+R1 ,1,"10k","Resistor_SMD:R_0603_1608Metric_Pad1.05x0.95mm_HandSolder",""
+R2 R3 ,2,"10k","Resistor_SMD:R_0402_1005Metric","~"
+U1 ,1,"MCP1700-3302E_SOT23","Package_TO_SOT_SMD:SOT-23","http://ww1.microchip.com/downloads/en/DeviceDoc/20001826D.pdf"
+U2 ,1,"ESP32-WROOM-32","RF_Module:ESP32-WROOM-32","https://www.espressif.com/sites/default/files/documentation/esp32-wroom-32_datasheet_en.pdf"
+U3 ,1,"MPU-6050","Sensor_Motion:InvenSense_QFN-24_4x4mm_P0.5mm","https://store.invensense.com/datasheets/invensense/MPU-6050_DataSheet_V3%204.pdf"

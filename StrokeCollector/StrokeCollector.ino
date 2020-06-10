@@ -19,6 +19,8 @@
 #include <Lpf.h>
 #include "SSD1306Wire.h"        // legacy: #include "SSD1306.h"
 #include <CircularBuffer.h>
+#include "BLEDevice.h"
+
 
 //initialize MPU object
 MPU6050 mpu(0x68);
@@ -58,7 +60,13 @@ LPF lpfx(BANDWIDTH_HZ, IS_BANDWIDTH_HZ);
 LPF lpfy(BANDWIDTH_HZ, IS_BANDWIDTH_HZ);
 LPF lpfz(BANDWIDTH_HZ, IS_BANDWIDTH_HZ);
 
-SSD1306Wire display(0x3c, 21, 22);   // ADDRESS, SDA, SCL  -  SDA and SCL usually populate automatically based on your board's pins_arduino.h
+SSD1306Wire display(0x3c, SDA, SCL);   // ADDRESS, SDA, SCL  -  SDA and SCL usually populate automatically based on your board's pins_arduino.h
+int rRate = 0;
+String dAx = "";
+String dAy = "";
+String dAz = "";
+String dAv = "";
+String dAr = "";
 
 CircularBuffer<int, 1000> aBuffer;
 CircularBuffer<int, 100> mBuffer;
@@ -66,6 +74,7 @@ CircularBuffer<int, 1000> rBuffer;
 float max_v;
 float pTime;
 float cTime;
+
 // ================================================================
 // ===               INTERRUPT DETECTION ROUTINE                ===
 // ================================================================
@@ -140,6 +149,7 @@ void setup() {
 
   pinMode(8, OUTPUT);
   Serial.println("Ready!");
+  /*
   if (!SD.begin(cardSelect)) {
     Serial.println("Card init. failed!");
     digitalWrite(LED_PIN, HIGH);
@@ -161,7 +171,9 @@ void setup() {
   }
   logfile.close();
   Serial.print("Writing to ");
-  Serial.println(filename);
+  Serial.println(filename)
+  ;
+  */
   //display initialization
   display.init();
   display.flipScreenVertically();
@@ -174,6 +186,7 @@ void setup() {
 // ================================================================
 
 void loop() {
+
   // if programming failed, don't try to do anything
   if (!dmpReady) return;
   // read a packet from FIFO
@@ -185,9 +198,12 @@ void loop() {
     mpu.dmpGetLinearAccel(&aaReal, &aa, &gravity);
 
     float aaX = lpfx.NextValue(aaReal.x);
+    float aaY = lpfy.NextValue(aaReal.y);
+    float aaZ = lpfz.NextValue(aaReal.z);
 
+    float aVal = aaY + aaZ;
     //Add filtered accel value to head of buffer
-    aBuffer.unshift(aaX);
+    aBuffer.unshift(aVal);
 
     //every loop set max accel to zero
     max_v = 1;
@@ -216,33 +232,56 @@ void loop() {
 
     // if the current acceleration value is greater than 90% of avereage of the previous 100 max values
     // and it has been at least a second since the last measurement,
-    if (aaX > 0.9 * vAvg && millis() - pTime > 1000)
+    if (aVal > 0.9 * vAvg && millis() - pTime > 1000)
     {
       //add rate based on peak to peak to the rate measurement buffer
       rBuffer.unshift(1 / ((millis() - pTime) / 60000));
       //reset previous time
       pTime = millis();
     }
-    
-    logfile = SD.open(filename, FILE_APPEND);
-    logfile.print(millis()); logfile.print(",");// Raw time in HHMMSSCC format (u32)
-    logfile.print(lpfx.NextValue(aaReal.x)); logfile.print(",");
-    logfile.print(lpfy.NextValue(aaReal.y)); logfile.print(",");
-    logfile.print(lpfz.NextValue(aaReal.z)); logfile.print(",");
-    logfile.print(rBuffer[0]); logfile.println(",");
-    logfile.close();
-    
-    
+
     Serial.print(millis()); Serial.print(",");// Raw time in HHMMSSCC format (u32)
     Serial.print(lpfx.NextValue(aaReal.x)); Serial.print(",");
     Serial.print(lpfy.NextValue(aaReal.y)); Serial.print(",");
     Serial.print(lpfz.NextValue(aaReal.z)); Serial.print(",");
     Serial.print(rBuffer[0]); Serial.println(",");
-    Serial.println(rBuffer[0]);
+    rRate++;
+    if (rRate >= 100)
+    {
+      dAx = String(lpfx.NextValue(aaReal.x));
+      dAy = String(lpfy.NextValue(aaReal.y));
+      dAz = String(lpfz.NextValue(aaReal.z));
+      dAv = String(sqrt(aaX * aaX + aaY * aaY + aaZ * aaZ));
+      dAr = String((rBuffer[0] + rBuffer[1] + rBuffer[2]) / 3);
+      
+      /*
+      logfile = SD.open(filename, FILE_APPEND);
+      logfile.print(millis()); logfile.print(",");// Raw time in millis
+      logfile.print(dAx); logfile.print(",");
+      logfile.print(dAy); logfile.print(",");
+      logfile.print(dAz); logfile.print(",");
+      logfile.print(dAr); logfile.println(",");
+      logfile.close();
+      */
+      
+      rRate = 0;
+    }
+
+
+    //Serial.println(pRemoteCharacteristic->readValue().c_str());
+
 
     display.clear();
 
-    display.println(String(rBuffer[0]));
+    display.drawString(0, 0, "Time:");
+    display.drawString(60, 0, String(millis() / 1000.0));
+
+    display.drawString(0, 22, "Rate:");
+    display.drawString(60, 22, dAr);
+
+    display.drawString(0, 44, "aVect:");
+    display.drawString(60, 44, dAv);
+
     display.display();      // Show initial text
 
     // blink LED to indicate activity
@@ -251,4 +290,5 @@ void loop() {
     mpu.resetFIFO();
     attachInterrupt(INTERRUPT_PIN, dmpDataReady, RISING);
   }
+
 }
