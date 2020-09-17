@@ -13,8 +13,8 @@
 #include <SoftwareSerial.h>
 #include <Lpf.h>
 #include "SSD1306Wire.h" // legacy: #include "SSD1306.h"
-#include <CircularBuffer.h>
-#include <SC-Font.h>
+#include "CircularBuffer.h"
+#include "SCFont.h"
 
 //initialize MPU object
 MPU6050 mpu(0x68);
@@ -61,7 +61,7 @@ CircularBuffer<int, 1000> rBuffer;
 float max_v;
 float pTime;
 float cTime;
-
+String timeStr = "";
 // ================================================================
 // ===               INTERRUPT DETECTION ROUTINE                ===
 // ================================================================
@@ -145,7 +145,20 @@ void setup()
   //display initialization
   display.init();
   display.flipScreenVertically();
-  display.setFont(SC_Font);
+  display.setFont(SCFont);
+}
+
+void getTime()
+{
+  int secs = millis()/1000;
+  String secStr = "";
+  if(secs<10)
+  {
+    secStr = "0" + String(secs%60);
+  }else{
+    secStr = String(secs%60);
+  }
+  timeStr = String((secs/60)%60) + ":" + secStr;
 }
 
 // ================================================================
@@ -234,10 +247,9 @@ void loop()
     }
 
     display.clear();
-    display.drawString(0, 0, "Time:");
-    display.drawString(60, 0, String(millis() / 1000.0));
-    display.drawString(0, 22, "Rate:");
-    display.drawString(60, 22, dAr);
+    getTime();
+    display.drawString(32, 4, timeStr);
+    display.drawString(32, 30, dAr);
 
     display.display(); // Show initial text
     // blink LED to indicate activity
@@ -247,3 +259,4 @@ void loop()
     attachInterrupt(INTERRUPT_PIN, dmpDataReady, RISING);
   }
 }
+
