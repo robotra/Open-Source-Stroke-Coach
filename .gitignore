@@ -3,6 +3,13 @@
 ##
 ## Get latest from https://github.com/github/gitignore/blob/master/VisualStudio.gitignore
 
+/OSSC-Code/.vscode/
+/OSSC-Code/build/
+/OSSC-Code/include/
+/OSSC-Code/lib/
+/OSSC-Code/test/
+/OSSC-Code/platfomio.ini
+
 # User-specific files
 *.rsuser
 *.suo
