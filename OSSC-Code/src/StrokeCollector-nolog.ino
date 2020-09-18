@@ -61,7 +61,11 @@ CircularBuffer<int, 1000> rBuffer;
 float max_v;
 float pTime;
 float cTime;
+
+int secs = 0;
+int pSecs = 0;
 String timeStr = "";
+int sleepTimer = 0;
 // ================================================================
 // ===               INTERRUPT DETECTION ROUTINE                ===
 // ================================================================
@@ -150,15 +154,17 @@ void setup()
 
 void getTime()
 {
-  int secs = millis()/1000;
+  secs = millis() / 1000;
   String secStr = "";
-  if(secs<10)
+  if (secs < 10)
   {
-    secStr = "0" + String(secs%60);
-  }else{
-    secStr = String(secs%60);
+    secStr = "0" + String(secs % 60);
   }
-  timeStr = String((secs/60)%60) + ":" + secStr;
+  else
+  {
+    secStr = String(secs % 60);
+  }
+  timeStr = String((secs / 60) % 60) + ":" + secStr;
 }
 
 // ================================================================
@@ -222,19 +228,7 @@ void loop()
       pTime = millis();
     }
 
-    Serial.print(millis());
-    Serial.print(",");
-    Serial.print(lpfx.NextValue(aaReal.x));
-    Serial.print(",");
-    Serial.print(lpfy.NextValue(aaReal.y));
-    Serial.print(",");
-    Serial.print(lpfz.NextValue(aaReal.z));
-    Serial.print(",");
-    Serial.print(rBuffer[0]);
-    // Serial.print(",");
-    // Serial.print(HRVal);
-    Serial.println(",");
-
+    sleepTimer = secs-pSecs;
     //write values to file every 3 seconds
     if (millis() - rRate >= 3000)
     {
@@ -245,10 +239,14 @@ void loop()
       dAr = String((rBuffer[0] + rBuffer[1] + rBuffer[2]) / 3);
       rRate = millis();
     }
-
+    if (sqrt(aaX * aaX + aaY * aaY + aaZ * aaZ) > 1000)
+    {
+      pSecs = secs;
+      sleepTimer = 0;
+    }
     display.clear();
     getTime();
-    display.drawString(32, 4, timeStr);
+    display.drawString(32, 4, String(sleepTimer));
     display.drawString(32, 30, dAr);
 
     display.display(); // Show initial text
@@ -258,5 +256,8 @@ void loop()
     mpu.resetFIFO();
     attachInterrupt(INTERRUPT_PIN, dmpDataReady, RISING);
   }
+  if (sleepTimer > 300)
+  {
+    esp_deep_sleep_start();
+  }
 }
-
