@@ -89,14 +89,12 @@ void setup()
   pinMode(13, OUTPUT);
 
   Serial.begin(115200);
-
+  delay(100);
   // initialize device
-  Serial.println(F("Initializing I2C devices..."));
-  delay(500);
   mpu.initialize();
-  delay(500);
+  delay(50);
   devStatus = mpu.dmpInitialize();
-  delay(500);
+  delay(50);
 
   // supply your own gyro offsets here, scaled for min sensitivity
   mpu.setXGyroOffset(79);
@@ -147,9 +145,19 @@ void setup()
   Serial.println("Ready!");
 
   //display initialization
+  display.displayOn();
   display.init();
   display.flipScreenVertically();
   display.setFont(SCFont);
+
+  
+  //Setup interrupt on Touch Pad 3 (GPIO15)
+  pinMode(GPIO_NUM_13, INPUT_PULLDOWN);
+  touchAttachInterrupt(T4, getTime, 40); 
+  //Setup logic low wakeup on GPIO 13
+  esp_sleep_enable_ext0_wakeup(GPIO_NUM_13,1); //1 = High, 0 = Low
+  //Configure wakeup sources
+  esp_sleep_enable_touchpad_wakeup();
 }
 
 void getTime()
@@ -239,7 +247,7 @@ void loop()
       dAr = String((rBuffer[0] + rBuffer[1] + rBuffer[2]) / 3);
       rRate = millis();
     }
-    if (sqrt(aaX * aaX + aaY * aaY + aaZ * aaZ) > 1000)
+    if (lpfy.NextValue(aaReal.y)) > 1000)
     {
       pSecs = secs;
       sleepTimer = 0;
@@ -256,8 +264,9 @@ void loop()
     mpu.resetFIFO();
     attachInterrupt(INTERRUPT_PIN, dmpDataReady, RISING);
   }
-  if (sleepTimer > 300)
+  if (sleepTimer > 30)
   {
+    display.displayOff();
     esp_deep_sleep_start();
   }
 }
