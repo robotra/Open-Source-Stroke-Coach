@@ -150,21 +150,17 @@ void setup()
   display.flipScreenVertically();
   display.setFont(SCFont);
 
-  
-  //Setup interrupt on Touch Pad 3 (GPIO15)
+  //Setup interrupt on GPIO13
+  digitalWrite(GPIO_NUM_13, LOW);
   pinMode(GPIO_NUM_13, INPUT_PULLDOWN);
-  touchAttachInterrupt(T4, getTime, 40); 
-  //Setup logic low wakeup on GPIO 13
-  esp_sleep_enable_ext0_wakeup(GPIO_NUM_13,1); //1 = High, 0 = Low
-  //Configure wakeup sources
-  esp_sleep_enable_touchpad_wakeup();
 }
 
 void getTime()
 {
+  detachInterrupt(INTERRUPT_PIN);
   secs = millis() / 1000;
   String secStr = "";
-  if (secs < 10)
+  if (secs % 60 < 10)
   {
     secStr = "0" + String(secs % 60);
   }
@@ -173,14 +169,71 @@ void getTime()
     secStr = String(secs % 60);
   }
   timeStr = String((secs / 60) % 60) + ":" + secStr;
+  attachInterrupt(INTERRUPT_PIN, dmpDataReady, RISING);
 }
 
+void sleepyTimer()
+{
+  detachInterrupt(INTERRUPT_PIN);
+  if (abs(lpfy.NextValue(aaReal.y)) > 1000 || abs(lpfx.NextValue(aaReal.x)) > 1000)
+  {
+    pSecs = secs;
+    sleepTimer = 0;
+  }
+  if (sleepTimer > 30)
+  {
+    sleepRoutine();
+  }
+  attachInterrupt(INTERRUPT_PIN, dmpDataReady, RISING);
+}
+
+void sleepRoutine()
+{
+  delay(50);
+  //Setup logic low wakeup on GPIO 13
+  esp_sleep_enable_ext0_wakeup(GPIO_NUM_13, 1); //1 = High, 0 = Low
+  //Configure wakeup sources
+  display.displayOff();  
+  digitalWrite(GPIO_NUM_13, LOW);
+  delay(1000);
+  esp_deep_sleep_start();
+}
 // ================================================================
 // ===                    MAIN PROGRAM LOOP                     ===
 // ================================================================
 
 void loop()
 {
+
+  detachInterrupt(INTERRUPT_PIN);
+  detachInterrupt(GPIO_NUM_13);
+  // Show initial text
+  display.clear();
+  getTime();
+  display.drawString(32, 4, String(timeStr));
+  display.drawString(32, 30, String(dAr));
+  display.display();
+
+  int sleepMillis = millis();
+  while (digitalRead(GPIO_NUM_13) == HIGH)
+  {
+
+    display.clear();
+    display.drawString(32, 4, String(millis() - sleepMillis));
+    display.display();
+
+    if (millis() - sleepMillis > 3000)
+    {
+      sleepRoutine();
+      break;
+    }
+  }
+
+  attachInterrupt(INTERRUPT_PIN, dmpDataReady, RISING);
+  // ================================================================
+  // ===                    Accel Interrupt LOOP                  ===
+  // ================================================================
+
   // if programming failed, don't try to do anything
   if (!dmpReady)
     return;
@@ -236,7 +289,7 @@ void loop()
       pTime = millis();
     }
 
-    sleepTimer = secs-pSecs;
+    sleepTimer = secs - pSecs;
     //write values to file every 3 seconds
     if (millis() - rRate >= 3000)
     {
@@ -247,26 +300,14 @@ void loop()
       dAr = String((rBuffer[0] + rBuffer[1] + rBuffer[2]) / 3);
       rRate = millis();
     }
-    if (lpfy.NextValue(aaReal.y)) > 1000)
-    {
-      pSecs = secs;
-      sleepTimer = 0;
-    }
-    display.clear();
-    getTime();
-    display.drawString(32, 4, String(sleepTimer));
-    display.drawString(32, 30, dAr);
 
-    display.display(); // Show initial text
+    sleepyTimer();
+
     // blink LED to indicate activity
     blinkState = !blinkState;
     digitalWrite(LED_PIN, blinkState);
     mpu.resetFIFO();
     attachInterrupt(INTERRUPT_PIN, dmpDataReady, RISING);
   }
-  if (sleepTimer > 30)
-  {
-    display.displayOff();
-    esp_deep_sleep_start();
-  }
 }
+
