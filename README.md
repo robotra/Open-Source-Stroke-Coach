@@ -2,7 +2,7 @@
 This project aims to replicate some of the funcationality of the NK StrokeCoach, but at a much lower cost. 
 
 Current hardware requirement: 
-* ESP32 
+* ESP32 DOIT dev kit
 * mpu6050 accelerometer
 * I2C display
 
